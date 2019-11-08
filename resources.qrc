@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/plugins/ZI_GTC">
+    <file>reloadIcon.png</file>
+    <file>icon.png</file>
+  </qresource>
+</RCC>
