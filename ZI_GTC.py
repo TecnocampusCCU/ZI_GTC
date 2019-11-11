@@ -85,7 +85,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.191107"
+Versio_modul="V_Q3.191111"
 geometria=""
 
 
@@ -2136,7 +2136,7 @@ class ZI_GTC:
              
         if L_capa == '' or L_capa == 'Selecciona una entitat':
             return
-            
+        
         errors = self.controlEntitatLeyenda(L_capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.
 
         if len(errors) < 2:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
@@ -2171,14 +2171,15 @@ class ZI_GTC:
         layers = QgsProject.instance().mapLayers().values()
         if layers != None:
             for layer in layers:
-                if layer.sourceName() == entitat:
-                    for each in layer.fields():
-                        if each.name() == "id":
-                            list.append("id")
-                        #elif each.name() == "geom":
-                        #    list.append("geom")
-                        elif each.name() == "Nom":
-                            list.append("Nom")
+                if layer.type()==QgsMapLayer.VectorLayer:
+                    if layer.sourceName() == entitat:
+                        for each in layer.fields():
+                            if each.name() == "id":
+                                list.append("id")
+                            #elif each.name() == "geom":
+                            #    list.append("geom")
+                            elif each.name() == "Nom":
+                                list.append("Nom")
         return list     
     
     
