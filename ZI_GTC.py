@@ -85,7 +85,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.191112"
+Versio_modul="V_Q3.191119"
 geometria=""
 
 
@@ -368,39 +368,68 @@ class ZI_GTC:
                 """Es suma al camp 'cost' i a 'reverse_cost' el valor dels semafors sempre i quan estigui la opci� marcada"""
                 sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"cost\"+(\"Cost_Total_Semafor_Tram\"), \"reverse_cost\"=\"reverse_cost\"+(\"Cost_Total_Semafor_Tram\");\n"
         #print sql_1
-        cur.execute(sql_1)
-        conn.commit()
+        try:
+            cur.execute(sql_1)
+            conn.commit()
+        except Exception as ex:
+            print ("Error CREATE Xarxa_Graf")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error CREATE Xarxa_Graf")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            return "ERROR"
 #       *****************************************************************************************************************
 #       FI CREACIO DE LA TAULA 'XARXA_GRAF' I PREPARACIO DELS CAMPS COST I REVERSE_COST
 #       *****************************************************************************************************************
 
 #       *****************************************************************************************************************
 #       INICI CREACIO DE LA TAULA 'PUNTS_INTERES_TMP' QUE CONTINDRA ELS PUNTS D'INTERES PROJECTATS SOBRE EL TRAM
-#       *****************************************************************************************************************
-        if self.dlg.tabWidget_Destino.currentIndex() == 0:
-            geometria=self.campGeometria(self.dlg.comboSelPunts.currentText())
-        else:
-            geometria=self.campGeometria(self.dlg.comboLeyenda.currentText())
-            
-        sql_1="drop table if exists punts_interes_tmp;\n"
-        if self.dlg.RB_campTaula.isChecked():
-            """Es crea la taula 'punts_interes_tmp' seleccionant el centroide de la entitat seleccionada utilitzant com a radi el valor del camp seleccionat"""
-            sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") the_geom,tmp.\"id\"as pid,tmp.\""+str(self.dlg.comboCapaPunts.currentText())+"\" from ("+sql_buff+") tmp);\n"
-        else:
-            """Es crea la taula punts_interes_tmp seleccionant el centroide de la entitat seleccionada, utilizant un radi fix"""
-            sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") the_geom,tmp.\"id\" as pid from ("+sql_buff+") tmp);\n"
-            
-        #sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN pid BIGSERIAL PRIMARY KEY;\n"
-        sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     x FLOAT;\n"
-        sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     y FLOAT;\n"
-        sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     edge_id BIGINT;\n"
-        sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     side CHAR;\n"
-        sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     fraction FLOAT;\n"
-        sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     newPoint geometry;\n"
-        #print sql_1
-
-        cur.execute(sql_1)
-        conn.commit()
+#       *****************************************************************************************************************        
+        try:
+            if self.dlg.tabWidget_Destino.currentIndex() == 0:
+                geometria=self.campGeometria(self.dlg.comboSelPunts.currentText())
+            else:
+                geometria=self.campGeometria(self.dlg.comboLeyenda.currentText())
+                
+            sql_1="drop table if exists punts_interes_tmp;\n"
+            if self.dlg.RB_campTaula.isChecked():
+                """Es crea la taula 'punts_interes_tmp' seleccionant el centroide de la entitat seleccionada utilitzant com a radi el valor del camp seleccionat"""
+                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") the_geom,tmp.\"id\"as pid,tmp.\""+str(self.dlg.comboCapaPunts.currentText())+"\" from ("+sql_buff+") tmp);\n"
+            else:
+                """Es crea la taula punts_interes_tmp seleccionant el centroide de la entitat seleccionada, utilizant un radi fix"""
+                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") the_geom,tmp.\"id\" as pid from ("+sql_buff+") tmp);\n"
+                
+            #sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN pid BIGSERIAL PRIMARY KEY;\n"
+            sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     x FLOAT;\n"
+            sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     y FLOAT;\n"
+            sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     edge_id BIGINT;\n"
+            sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     side CHAR;\n"
+            sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     fraction FLOAT;\n"
+            sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     newPoint geometry;\n"
+            #print sql_1
+            cur.execute(sql_1)
+            conn.commit()
+        except Exception as ex:
+            print ("Error CREATE punts_interes_tmp")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error CREATE punts_interes_tmp")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            return "ERROR"
 #       *****************************************************************************************************************
 #       FI CREACIO DE LA TAULA 'PUNTS_INTERES_TMP' QUE CONTINDRA ELS PUNTS D'INTERES PROJECTATS SOBRE EL TRAM
 #       *****************************************************************************************************************
@@ -413,8 +442,23 @@ class ZI_GTC:
         """Es calcula la fraccio del tram que on esta situat la projecci� del punt d'interes"""
         sql_1+="UPDATE \"punts_interes_tmp\" SET fraction = ST_LineLocatePoint(e.the_geom, \"punts_interes_tmp\".the_geom),newPoint = ST_LineInterpolatePoint(e.the_geom, ST_LineLocatePoint(e.the_geom, \"punts_interes_tmp\".the_geom)) FROM \"Xarxa_Graf\" AS e WHERE \"punts_interes_tmp\".\"edge_id\" = e.id;\n"
         #print sql_1
-        cur.execute(sql_1)
-        conn.commit()
+        try:
+            cur.execute(sql_1)
+            conn.commit()
+        except Exception as ex:
+            print ("Error UPDATE punts_interes_temp")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error UPDATE punts_interes_temp")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            return "ERROR"
 #       *****************************************************************************************************************
 #       FI ASSIGNACIO DEL VALOR DEL TRAM MES PROPER AL CAMP 'EDGE_ID' DE LA TAULA 'PUNTS_INTERES_TMP 
 #       *****************************************************************************************************************
@@ -426,8 +470,23 @@ class ZI_GTC:
         sql_1+="DROP TABLE IF EXISTS tbl_punts_finals_tmp;\n"
         if self.dlg.RB_campTaula.isChecked():
             """ Es posa a dins d'una variable 'Radi_Variable' tots els valors de radis de cada punt d'interes"""
-            cur.execute("select \"pid\",\""+str(self.dlg.comboCapaPunts.currentText())+"\" from \"punts_interes_tmp\" order by \"pid\" asc ;\n")
-            Radi_Variable = cur.fetchall()
+            try:
+                cur.execute("select \"pid\",\""+str(self.dlg.comboCapaPunts.currentText())+"\" from \"punts_interes_tmp\" order by \"pid\" asc ;\n")
+                Radi_Variable = cur.fetchall()
+            except Exception as ex:
+                print ("Error SELECT punts_interes_tmp")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "Error SELECT punts_interes_tmp")
+                conn.rollback()
+                self.eliminaTaulesCalcul(Fitxer)
+                self.bar.clearWidgets()
+                self.dlg.Progres.setValue(0)
+                self.dlg.Progres.setVisible(False)
+                self.dlg.lblEstatConn.setText('Connectat')
+                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                return "ERROR"
             """Creaci� de la taula 'tbl_punts_finsl_tmp' on es tindr� tots els nodes de la xarxa que son a dins del radi d'acci� indicat fent UNION per cada entitat amb el seu radi personalitzat segons el valor del camp escollit"""
             sql_1+="CREATE local temporary TABLE tbl_punts_finals_tmp AS("
             for x in range (0,len(Radi_Variable)):
@@ -624,8 +683,23 @@ class ZI_GTC:
             return "ERROR"
             
         sql_1="DROP FUNCTION IF EXISTS Cobertura();\n"
-        cur.execute(sql_1)
-        conn.commit()
+        try:
+            cur.execute(sql_1)
+            conn.commit()
+        except Exception as ex:
+            print ("Error DROP Cobertura")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error DROP Cobertura")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            return "ERROR"
 #       *****************************************************************************************************************
 #       FI FUNCIO PER CREAR ELS TRAMS FINALS AMB LA FRACCIO DE TRAM QUE LI CORRESPON 
 #       *****************************************************************************************************************
@@ -1599,15 +1673,45 @@ class ZI_GTC:
                         """ Calcul dels habitants afectats"""
                         sql = "SELECT SUM(SUMA.\"Habitants\") from ("+sql_total+") SUMA"
                         #print (sql)
-                        cur.execute(sql)
-                        Habitants_afectats = cur.fetchone()
+                        try:
+                            cur.execute(sql)
+                            Habitants_afectats = cur.fetchone()
+                        except Exception as ex:
+                            print ("Error SELECT suma habitants")
+                            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                            message = template.format(type(ex).__name__, ex.args)
+                            print (message)
+                            QMessageBox.information(None, "Error", "Error SELECT suma habitants")
+                            conn.rollback()
+                            self.eliminaTaulesCalcul(Fitxer)
+                            self.bar.clearWidgets()
+                            self.dlg.Progres.setValue(0)
+                            self.dlg.Progres.setVisible(False)
+                            self.dlg.lblEstatConn.setText('Connectat')
+                            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                            return
                         """Calcul dels habitants totals"""
                         if (self.dlg.bt_ILLES.isChecked()):
                             sql = "SELECT SUM(SUMA.\"Habitants\") from (SELECT \"Habitants\" from \"Illes_Resum_"+Fitxer+"\") SUMA"
                         else:
                             sql = "SELECT SUM(SUMA.\"Habitants\") from (SELECT \"Habitants\" from \"Resum_Temp_"+Fitxer+"\") SUMA"
-                        cur.execute(sql)
-                        Habitants_totals = cur.fetchone()
+                        try:
+                            cur.execute(sql)
+                            Habitants_totals = cur.fetchone()
+                        except Exception as ex:
+                            print ("Error SELECT Suma")
+                            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                            message = template.format(type(ex).__name__, ex.args)
+                            print (message)
+                            QMessageBox.information(None, "Error", "Error SELECT Suma")
+                            conn.rollback()
+                            self.eliminaTaulesCalcul(Fitxer)
+                            self.bar.clearWidgets()
+                            self.dlg.Progres.setValue(0)
+                            self.dlg.Progres.setVisible(False)
+                            self.dlg.lblEstatConn.setText('Connectat')
+                            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                            return
                         self.dlg.lblNum.setText(str("{0:.2f}%".format(Habitants_afectats[0]/Habitants_totals[0]*100)))
                         print ("HABITANTS AFECTATS: "+str(Habitants_afectats[0]))
                         print ("HABITANTS TOTALS: "+str(Habitants_totals[0]))
@@ -1802,9 +1906,8 @@ class ZI_GTC:
         drop += 'DROP TABLE IF EXISTS "Graf_utilitzat_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Resum_Temp_'+Fitxer+'";\n'
         try:
-            #cur.execute(drop)
-            #conn.commit()
-            pass
+            cur.execute(drop)
+            conn.commit()
         except Exception as ex:
             print("Error DROP final")
             template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -2266,14 +2369,30 @@ class ZI_GTC:
         del combo o desplegable de la capa de punts,
         autom�ticament comprova els camps de la taula escollida.
         """
-        capa=self.dlg.comboGraf.currentText()
-        if capa != "":
-            if capa != 'Selecciona una entitat':
-                if (self.grafValid(capa)):
-                    pass
-                else:
-                    QMessageBox.information(None, "Error", 'El graf seleccionat no té la capa de nusos corresponent.\nEscolliu un altre.')
+        try:
+            capa=self.dlg.comboGraf.currentText()
+            if capa != "":
+                if capa != 'Selecciona una entitat':
+                    if (self.grafValid(capa)):
+                        pass
+                    else:
+                        QMessageBox.information(None, "Error", "El graf seleccionat no té la capa de nusos corresponent.\nEscolliu un altre.")
 
+        except Exception as ex:
+            print ("Error Graf seleccionat")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error Graf seleccionat")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            return
+        
     def on_click_CB_poblacio(self, state):
         """Aquesta funci� mostra les funcions de dibuix en funci� de l'estat del checkBox"""
         if state != QtCore.Qt.Checked:
