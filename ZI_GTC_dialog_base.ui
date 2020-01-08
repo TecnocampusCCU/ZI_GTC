@@ -198,6 +198,17 @@
      </rect>
     </property>
    </widget>
+   <zorder>checkBoxDibuix</zorder>
+   <zorder>lblColorArea</zorder>
+   <zorder>lblColor</zorder>
+   <zorder>lblTras</zorder>
+   <zorder>comboTras</zorder>
+   <zorder>label_10</zorder>
+   <zorder>label_12</zorder>
+   <zorder>colorArea</zorder>
+   <zorder>color</zorder>
+   <zorder>TL_radiZI</zorder>
+   <zorder>versio</zorder>
   </widget>
   <widget class="QGroupBox" name="groupBox_3">
    <property name="geometry">
@@ -1249,10 +1260,10 @@ border-color: rgb(0, 0, 0);</string>
   <widget class="QLabel" name="versio">
    <property name="geometry">
     <rect>
-     <x>610</x>
+     <x>550</x>
      <y>0</y>
-     <width>80</width>
-     <height>16</height>
+     <width>111</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="font">
@@ -1264,6 +1275,9 @@ border-color: rgb(0, 0, 0);</string>
    </property>
    <property name="text">
     <string>V.XXXXXX</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
    </property>
   </widget>
   <widget class="QProgressBar" name="Progres">

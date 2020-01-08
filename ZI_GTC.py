@@ -29,7 +29,7 @@ from PyQt5.QtCore import * #QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import * #QIcon
 from PyQt5 import QtGui
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QAction,QMessageBox,QTableWidgetItem, QApplication,QSizePolicy,QGridLayout,QDialogButtonBox,QFileDialog,QProgressBar,QColorDialog
+from PyQt5.QtWidgets import QAction,QMessageBox,QTableWidgetItem, QApplication,QSizePolicy,QGridLayout,QDialogButtonBox,QFileDialog,QProgressBar,QColorDialog,QToolBar
 from .ZI_GTC_dialog import ZI_GTCDialog
 from qgis.core import QgsMapLayer,QgsWkbTypes
 from qgis.core import QgsDataSourceUri
@@ -85,7 +85,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.191119"
+Versio_modul="V_Q3.200108"
 geometria=""
 
 
@@ -145,8 +145,17 @@ class ZI_GTC:
         self.actions = []
         self.menu = self.tr('&CCU')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar('CCU')
-        self.toolbar.setObjectName('Calcul de Poblacio Afectada')
+        #self.toolbar = self.iface.addToolBar('CCU')
+        #self.toolbar.setObjectName('Calcul de Poblacio Afectada')
+        trobat=False
+        for x in iface.mainWindow().findChildren(QToolBar,'CCU'): 
+            self.toolbar = x
+            trobat=True
+        
+        if not trobat:
+            self.toolbar = self.iface.addToolBar('CCU')
+            self.toolbar.setObjectName('CCU')
+        
         self.bar = QgsMessageBar()
         self.bar.setSizePolicy( QSizePolicy.Minimum, QSizePolicy.Fixed )
         self.dlg.setLayout(QGridLayout())
@@ -264,9 +273,10 @@ class ZI_GTC:
             self.iface.removePluginMenu(
                 self.tr('&ZI_GTC'),
                 action)
-            self.iface.removeToolBarIcon(action)
+            #self.iface.removeToolBarIcon(action)
+            self.toolbar.removeAction(action)
         # remove the toolbar
-        del self.toolbar
+        #del self.toolbar
 
 
     def on_click_campTaula(self,enabled):
