@@ -85,7 +85,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.200108"
+Versio_modul="V_Q3.200114"
 geometria=""
 
 
@@ -271,7 +271,7 @@ class ZI_GTC:
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr('&ZI_GTC'),
+                self.tr('&CCU'),
                 action)
             #self.iface.removeToolBarIcon(action)
             self.toolbar.removeAction(action)
