@@ -85,7 +85,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.200114"
+Versio_modul="V_Q3.200212"
 geometria=""
 
 
@@ -306,6 +306,7 @@ class ZI_GTC:
     def controlErrors(self):
         """Aquesta funci� controla que tots els camps siguin correctes abans de fer el c�lcul"""
         errors = []
+        capa = None
         if self.dlg.comboConnexio.currentText() == 'Selecciona connexió':
             errors.append('No hi ha seleccionada cap connexió')
             
@@ -314,11 +315,15 @@ class ZI_GTC:
                 errors.append('No hi ha cap capa de destí seleccionada')
             elif self.dlg.comboSelPunts.currentText() == '':
                 errors.append('No hi ha cap capa de destí disponible')
+            else:
+                capa = self.dlg.comboSelPunts.currentText()
         else:# Llegenda
             if self.dlg.comboLeyenda.currentText() == 'Selecciona una entitat':
                 errors.append('No hi ha cap capa de destí seleccionada')
             elif self.dlg.comboLeyenda.currentText() == '':
                 errors.append('No hi ha cap capa de destí disponible')
+            else:
+                capa = self.dlg.comboLeyenda.currentText()
 
         if self.dlg.comboGraf.currentText() == 'Selecciona una entitat':
             errors.append('No hi ha seleccionada cap capa de xarxa seleccionada')
@@ -343,6 +348,15 @@ class ZI_GTC:
         
         if self.dlg.TB_titol.text() == '':
             errors.append('No hi ha cap títol seleccionat')
+          
+        if capa is not None:
+            if self.dlg.tabWidget_Destino.currentIndex() == 0:
+                errorsCapa = self.controlEntitatSelPunts(capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.    
+            else:
+                errorsCapa = self.controlEntitatLeyenda(capa)
+    
+            if len(errorsCapa) < 2:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
+                errors.append('La capa de destí no és vàlida')
         
         return errors
     
@@ -1193,99 +1207,208 @@ class ZI_GTC:
         """Aquesta funcio genera tots els calculs amb tots el parametres que li hem introduit
         a la finestra a traves dels elements de la interficie."""
         #Mirar si la entitat seleccionada retorna True o False, volent dir que es correcte o per el contrari hi falten alguns camps a la taula necessaris per fer els càlculs
-        if self.dlg.tabWidget_Destino.currentIndex() == 0:
-            acceptable = self.on_Change_ComboSelPunts()
-        else:
-            acceptable = self.on_Change_ComboLeyenda()
-            
-        if acceptable is True:
-            global micolor
-            global micolorArea
-            global Fitxer
-            global cur
-            global conn
-            global nomBD1
-            global contra1
-            global host1
-            global port1
-            global usuari1
-            global schema
-            global progress
-            global geometria
-            
-            Fitxer=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-            errors = self.controlErrors()
-            if len(errors) > 0:
-                llista = "Llista d'errors:\n\n"
-                for i in range (0,len(errors)):
-                    llista += ("- "+errors[i] + '\n') 
-                    
-                QMessageBox.information(None, "Error", llista)
-                return
-            
-            arxiuLlegit = False
-            self.dlg.Progres.setValue(0)
-            self.dlg.Progres.setVisible(False)
-            QApplication.processEvents()
-            
-
-            if self.dlg.tabWidget_Destino.currentIndex() == 0:
-                select = 'select count (*) from \"'+self.dlg.comboSelPunts.currentText()+'\"'
-                try:                
-                    cur.execute(select)
-                    auxlist = cur.fetchall()
-                    if auxlist[0][0] == 0:
-                        ErrorMessage = 'La entitat escollida es buida'
-                        QMessageBox.information(None, "Error", ErrorMessage+'\n')
-                        self.bar.clearWidgets()
-                        self.dlg.Progres.setValue(0)
-                        self.dlg.Progres.setVisible(False)
-                        self.dlg.lblEstatConn.setText('Connectat')
-                        self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                        return
-                except Exception as ex:
-                    print("ERROR select count")
-                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                    message = template.format(type(ex).__name__, ex.args)
-                    print (message)
-                    QMessageBox.information(None, "Error", "ERROR select count")
-                    self.eliminaTaulesCalcul(Fitxer)
+        global micolor
+        global micolorArea
+        global Fitxer
+        global cur
+        global conn
+        global nomBD1
+        global contra1
+        global host1
+        global port1
+        global usuari1
+        global schema
+        global progress
+        global geometria
         
+        self.dlg.setEnabled(False)
+        
+        
+        Fitxer=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+        errors = self.controlErrors()
+        if len(errors) > 0:
+            llista = "Llista d'errors:\n\n"
+            for i in range (0,len(errors)):
+                llista += ("- "+errors[i] + '\n') 
+                
+            QMessageBox.information(None, "Error", llista)
+            self.dlg.setEnabled(True)
+            return
+        
+        arxiuLlegit = False
+        self.dlg.Progres.setValue(0)
+        self.dlg.Progres.setVisible(False)
+        QApplication.processEvents()
+        
+
+        if self.dlg.tabWidget_Destino.currentIndex() == 0:
+            select = 'select count (*) from \"'+self.dlg.comboSelPunts.currentText()+'\"'
+            try:                
+                cur.execute(select)
+                auxlist = cur.fetchall()
+                if auxlist[0][0] == 0:
+                    ErrorMessage = 'La entitat escollida es buida'
+                    QMessageBox.information(None, "Error", ErrorMessage+'\n')
                     self.bar.clearWidgets()
                     self.dlg.Progres.setValue(0)
                     self.dlg.Progres.setVisible(False)
                     self.dlg.lblEstatConn.setText('Connectat')
                     self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                    self.dlg.setEnabled(True)
                     return
-            
+            except Exception as ex:
+                print("ERROR select count")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "ERROR select count")
+                self.eliminaTaulesCalcul(Fitxer)
     
-    #       *****************************************************************************************f************************
-    #       INICI CREACIO DE LES TAULES RESUM DESDE EL CSV SUMINISTRAT 
-    #       *****************************************************************************************************************
-            if (self.dlg.chk_poblacio.isChecked()):
-                path = QFileDialog.getExistingDirectory(self.dlg,
-                        "Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",
-                        QFileDialog.ShowDirsOnly)
-                trobat = True
-                a=time.time()
-                while trobat:
+                self.bar.clearWidgets()
+                self.dlg.Progres.setValue(0)
+                self.dlg.Progres.setVisible(False)
+                self.dlg.lblEstatConn.setText('Connectat')
+                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                self.dlg.setEnabled(True)
+                return
+        
+
+#       *****************************************************************************************f************************
+#       INICI CREACIO DE LES TAULES RESUM DESDE EL CSV SUMINISTRAT 
+#       *****************************************************************************************************************
+        if (self.dlg.chk_poblacio.isChecked()):
+            path = QFileDialog.getExistingDirectory(self.dlg,
+                    "Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",
+                    QFileDialog.ShowDirsOnly)
+            trobat = True
+            a=time.time()
+            while trobat:
+                if (path != ''):
+                    if (os.path.exists(path + "\\tr_illes.csv")):
+                        trobat = False 
+                        
+                        arxiu = open(path + "\\tr_illes.csv", 'r')
+                        dummy=arxiu.readline()
+                        lines = arxiu.readlines()
+                        try:
+                            """Creació de la taula temporal Illes_resum_(data) de les dades del CSV de la taula resum d'illes"""
+                            cur.execute("CREATE TABLE \"Illes_Resum_"+Fitxer+"\" (\"ILLES_Codificades\" varchar(20), \"Habitants\" numeric);")
+                            conn.commit()
+                            insert=""
+                            for linia in lines:
+                                vec = linia.split(';', 20 )
+                                insert += "INSERT INTO \"Illes_Resum_"+Fitxer+"\" (\"ILLES_Codificades\", \"Habitants\") VALUES ('"+ vec[0] + "', "+ vec[1]+ ");\n"
+                            cur.execute(insert)
+                            conn.commit()
+                        except Exception as ex:
+                            print ("I am unable to connect to the database")
+                            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                            message = template.format(type(ex).__name__, ex.args)
+                            print (message)
+                            QMessageBox.information(None, "Error", "I am unable to connect to the database")
+                            conn.rollback()
+                            self.eliminaTaulesCalcul(Fitxer)
+                
+                            self.bar.clearWidgets()
+                            self.dlg.Progres.setValue(0)
+                            self.dlg.Progres.setVisible(False)
+                            self.dlg.lblEstatConn.setText('Connectat')
+                            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                            self.dlg.setEnabled(True)
+                            return
+                            
+                        arxiu.close()
+                        arxiuLlegit = True
+                    else:
+                        print ("No hi ha l'arxiu")
+                        path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
+                else:
+                    print ("Cancelat")
+                    self.bar.setEnabled(True)
+                    self.bar.clearWidgets()
+                    self.dlg.Progres.setVisible(False)
+                    self.dlg.Progres.setValue(0)
+                   
+                    self.dlg.setEnabled(True)
+                    self.bar.clearWidgets()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
+                   
+                
+                if (self.dlg.bt_Parcel.isChecked()):
                     if (path != ''):
-                        if (os.path.exists(path + "\\tr_illes.csv")):
+                        if (os.path.exists(path + "\\tr_parceles.csv")):
                             trobat = False 
                             
-                            arxiu = open(path + "\\tr_illes.csv", 'r')
+                            arxiu = open(path + "\\tr_parceles.csv", 'r')
                             dummy=arxiu.readline()
                             lines = arxiu.readlines()
                             try:
-                                """Creació de la taula temporal Illes_resum_(data) de les dades del CSV de la taula resum d'illes"""
-                                cur.execute("CREATE TABLE \"Illes_Resum_"+Fitxer+"\" (\"ILLES_Codificades\" varchar(20), \"Habitants\" numeric);")
+                                """Creaci� de la taula temporal Resum_Temp_(data) de les dades del CSV de la taula resum de parceles"""
+                                cur.execute("CREATE TABLE \"Resum_Temp_"+Fitxer+"\" (\"Parcela\" varchar(20), \"Habitants\" numeric);")
                                 conn.commit()
                                 insert=""
                                 for linia in lines:
                                     vec = linia.split(';', 20 )
-                                    insert += "INSERT INTO \"Illes_Resum_"+Fitxer+"\" (\"ILLES_Codificades\", \"Habitants\") VALUES ('"+ vec[0] + "', "+ vec[1]+ ");\n"
+                                    insert += "INSERT INTO \"Resum_Temp_"+Fitxer+"\" (\"Parcela\", \"Habitants\") VALUES ('"+ vec[0] + "', "+ vec[1]+ ");\n"
                                 cur.execute(insert)
                                 conn.commit()
+                                #print "ok"                
+                            except Exception as ex:
+                                print ("I am unable to connect to the database")
+                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                message = template.format(type(ex).__name__, ex.args)
+                                print (message) 
+                                QMessageBox.information(None, "Error", "I am unable to connect to the database")
+                                conn.rollback()
+                                self.eliminaTaulesCalcul(Fitxer)
+                    
+                                self.bar.clearWidgets()
+                                self.dlg.Progres.setValue(0)
+                                self.dlg.Progres.setVisible(False)
+                                self.dlg.lblEstatConn.setText('Connectat')
+                                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                self.dlg.setEnabled(True)
+                                return
+                        
+                        
+                            arxiu.close()
+                            arxiuLlegit = True
+                        else:
+                            print ("No hi ha l'arxiu")
+                            path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
+                    else:
+                        print ("Cancelat")
+                        self.bar.setEnabled(True)
+                        self.bar.clearWidgets()
+                        self.dlg.Progres.setVisible(False)
+                        self.dlg.Progres.setValue(0)
+                       
+                        self.dlg.setEnabled(True)
+                        self.bar.clearWidgets()
+                        self.eliminaTaulesCalcul(Fitxer)
+                        return
+        
+                if (self.dlg.bt_Portals.isChecked()):
+                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: rgb(255, 170, 142)')
+                    if (path != ''):
+                        if (os.path.exists(path + "\\tr_npolicia.csv")):
+                            trobat = False 
+                            
+                            arxiu = open(path + "\\tr_npolicia.csv", 'r')
+                            dummy=arxiu.readline()
+                            lines = arxiu.readlines()
+                            try:
+                                """Creació de la taula temporal Resum_Temp_(data) de les dades del CSV de la taula resum de portals"""
+                                cur.execute("CREATE TABLE \"Resum_Temp_"+Fitxer+"\" (\"NPolicia\" varchar(20), \"Habitants\" numeric);")
+                                conn.commit()
+                                insert=""
+                                for linia in lines:
+                                    vec = linia.split(';', 20 )
+                                    insert += "INSERT INTO \"Resum_Temp_"+Fitxer+"\" (\"NPolicia\", \"Habitants\") VALUES ('"+ vec[0] + "', "+ vec[1]+ ");\n"
+                                cur.execute(insert)
+                                conn.commit()
+                                #print "ok"                
                             except Exception as ex:
                                 print ("I am unable to connect to the database")
                                 template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -1300,6 +1423,7 @@ class ZI_GTC:
                                 self.dlg.Progres.setVisible(False)
                                 self.dlg.lblEstatConn.setText('Connectat')
                                 self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                self.dlg.setEnabled(True)
                                 return
                                 
                             arxiu.close()
@@ -1309,81 +1433,144 @@ class ZI_GTC:
                             path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
                     else:
                         print ("Cancelat")
-                        trobat = False
+                        self.bar.setEnabled(True)
+                        self.bar.clearWidgets()
                         self.dlg.Progres.setVisible(False)
-                    
-                    if (self.dlg.bt_Parcel.isChecked()):
-                        if (path != ''):
-                            if (os.path.exists(path + "\\tr_parceles.csv")):
-                                trobat = False 
-                                
-                                arxiu = open(path + "\\tr_parceles.csv", 'r')
-                                dummy=arxiu.readline()
-                                lines = arxiu.readlines()
-                                try:
-                                    """Creaci� de la taula temporal Resum_Temp_(data) de les dades del CSV de la taula resum de parceles"""
-                                    cur.execute("CREATE TABLE \"Resum_Temp_"+Fitxer+"\" (\"Parcela\" varchar(20), \"Habitants\" numeric);")
-                                    conn.commit()
-                                    insert=""
-                                    for linia in lines:
-                                        vec = linia.split(';', 20 )
-                                        insert += "INSERT INTO \"Resum_Temp_"+Fitxer+"\" (\"Parcela\", \"Habitants\") VALUES ('"+ vec[0] + "', "+ vec[1]+ ");\n"
-                                    cur.execute(insert)
-                                    conn.commit()
-                                    #print "ok"                
-                                except Exception as ex:
-                                    print ("I am unable to connect to the database")
-                                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                    message = template.format(type(ex).__name__, ex.args)
-                                    print (message) 
-                                    QMessageBox.information(None, "Error", "I am unable to connect to the database")
-                                    conn.rollback()
-                                    self.eliminaTaulesCalcul(Fitxer)
-                        
-                                    self.bar.clearWidgets()
-                                    self.dlg.Progres.setValue(0)
-                                    self.dlg.Progres.setVisible(False)
-                                    self.dlg.lblEstatConn.setText('Connectat')
-                                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                    return
-                            
-                            
-                                arxiu.close()
-                                arxiuLlegit = True
-                            else:
-                                print ("No hi ha l'arxiu")
-                                path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
-                        else:
-                            print ("Cancelat")
-                            trobat = False
-                            self.dlg.Progres.setVisible(False)
+                        self.dlg.Progres.setValue(0)
+                       
+                        self.dlg.setEnabled(True)
+                        self.bar.clearWidgets()
+                        self.eliminaTaulesCalcul(Fitxer)
+                        return
+        else:
+            a=time.time()
+#       *****************************************************************************************************************
+#       FI CREACIO DE LES TAULES RESUM DESDE EL CSV SUMINISTRAT 
+#       *****************************************************************************************************************
+        progressMessageBar = self.bar.createMessage('Processant:')
+        progress = QProgressBar()
+        progress.setMaximum(100)
+        progress.setAlignment(Qt.AlignLeft|Qt.AlignTop)
+        progressMessageBar.layout().addWidget(progress)
+        #progressMessageBar.layout().addWidget(self.dlg.progress)
+        self.bar.pushWidget(progressMessageBar, Qgis.Info)
+        self.bar.setEnabled(False)
+        progress.setValue(0)
+       
+        progress.setValue(10)
+
+        self.dlg.Progres.setValue(10)
+        QApplication.processEvents()
+        fesCalcul = True      
+        if (self.dlg.chk_poblacio.isChecked() and not arxiuLlegit):
+            fesCalcul = False
+        elif (self.dlg.chk_poblacio.isChecked() and arxiuLlegit):
+            fesCalcul = True
+        else:
+            fesCalcul = True
+        if not(fesCalcul):
+            self.dlg.setEnabled(True)
+            return
             
-                    if (self.dlg.bt_Portals.isChecked()):
-                        self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: rgb(255, 170, 142)')
-                        if (path != ''):
-                            if (os.path.exists(path + "\\tr_npolicia.csv")):
-                                trobat = False 
+        if (self.dlg.lblEstatConn.text()=='Connectat'):
+            self.dlg.lblEstatConn.setText('Connectat i processant')
+            
+            if self.dlg.tabWidget_Destino.currentIndex() == 0:
+                entitat = self.dlg.comboSelPunts.currentText()
+            else:
+                entitat = self.dlg.comboLeyenda.currentText()
+                           
+            if (entitat !=""):
+                uri = QgsDataSourceUri()
+
+                try:
+                    uri.setConnection(host1,port1,nomBD1,usuari1,contra1)
+                    print ("Connectat")
+                    #print (uri.connectionInfo())
+                except Exception as ex:
+                    print ("Error a la connexio")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error a la connexio")
+                    self.eliminaTaulesCalcul(Fitxer)
+        
+                    self.bar.clearWidgets()
+                    self.dlg.Progres.setValue(0)
+                    self.dlg.Progres.setVisible(False)
+                    self.dlg.lblEstatConn.setText('Connectat')
+                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                    self.dlg.setEnabled(True)
+                    return
+                                    
+                
+                #********************************************************************************************************
+                #    Afegir l'exportació del layer, i posteriorment llençar un avis en cas de que l'entitat sigui buida 
+                #********************************************************************************************************
+                '''Exportar temporalment la entitat seleccionada a la BBDD'''
+                layers = QgsProject.instance().mapLayers().values()
+                if layers != None:
+                    for layer in layers:
+                        if layer.name() == self.dlg.comboLeyenda.currentText():
+                            error = QgsVectorLayerExporter.exportLayer(layer, 'table="public"."LayerExportat'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", layer.crs(), False)
+                            if error[0] != 0:
+                                iface.messageBar().pushMessage(u'Error', error[1])
+                            
+                            #cada usuari tindrà la seva taula local temporal "LayerExportat", es una versió Local Temp del Layer exportat de la leyenda.
+                            #Amb l'objectiu de que dos usuaris puguin treballar amb el mateix nom de la taula, eliminant concurrencia.
+                            try:
+                                sql_SRID="SELECT Find_SRID('public', 'LayerExportat"+Fitxer+"', 'geom')"
+                                cur.execute(sql_SRID)
+                            except Exception as ex:
+                                print ("ERROR SELECT SRID")
+                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                message = template.format(type(ex).__name__, ex.args)
+                                print (message)
+                                QMessageBox.information(None, "Error", "ERROR SELECT SRID")
+                                conn.rollback()
+                                self.eliminaTaulesCalcul(Fitxer)
+                    
+                                self.bar.clearWidgets()
+                                self.dlg.Progres.setValue(0)
+                                self.dlg.Progres.setVisible(False)
+                                self.dlg.lblEstatConn.setText('Connectat')
+                                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                self.dlg.setEnabled(True)
+                                return
+                            auxlist = cur.fetchall()
+                            Valor_SRID=auxlist[0][0]
+                            alter = 'ALTER TABLE "LayerExportat'+Fitxer+'" ALTER COLUMN geom TYPE geometry(Point,'+str(Valor_SRID)+') USING ST_GeometryN(geom,1);'
+                            
+                            try:
+                                cur.execute(alter)
+                                conn.commit()
+                            except Exception as ex:
+                                print ("ALTER TABLE ERROR_geometry")
+                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                message = template.format(type(ex).__name__, ex.args)
+                                print (message)
+                                QMessageBox.information(None, "Error", "ALTER TABLE ERROR_geometry")
+                                conn.rollback()
+                                self.eliminaTaulesCalcul(Fitxer)
+                    
+                                self.bar.clearWidgets()
+                                self.dlg.Progres.setValue(0)
+                                self.dlg.Progres.setVisible(False)
+                                self.dlg.lblEstatConn.setText('Connectat')
+                                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                self.dlg.setEnabled(True)
+                                return
                                 
-                                arxiu = open(path + "\\tr_npolicia.csv", 'r')
-                                dummy=arxiu.readline()
-                                lines = arxiu.readlines()
-                                try:
-                                    """Creaci� de la taula temporal Resum_Temp_(data) de les dades del CSV de la taula resum de portals"""
-                                    cur.execute("CREATE TABLE \"Resum_Temp_"+Fitxer+"\" (\"NPolicia\" varchar(20), \"Habitants\" numeric);")
-                                    conn.commit()
-                                    insert=""
-                                    for linia in lines:
-                                        vec = linia.split(';', 20 )
-                                        insert += "INSERT INTO \"Resum_Temp_"+Fitxer+"\" (\"NPolicia\", \"Habitants\") VALUES ('"+ vec[0] + "', "+ vec[1]+ ");\n"
-                                    cur.execute(insert)
-                                    conn.commit()
-                                    #print "ok"                
-                                except Exception as ex:
-                                    print ("I am unable to connect to the database")
-                                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                    message = template.format(type(ex).__name__, ex.args)
-                                    print (message)
-                                    QMessageBox.information(None, "Error", "I am unable to connect to the database")
+                                
+                                
+                            select = 'select count (*) from "LayerExportat'+Fitxer+'"'
+                            
+                            try:                
+                                cur.execute(select)
+                                auxlist = cur.fetchall()
+                                if auxlist[0][0] == 0:
+                                    ErrorMessage = 'La entitat escollida es buida'
+                                    QMessageBox.information(None, "Error", ErrorMessage+'\n')
                                     conn.rollback()
                                     self.eliminaTaulesCalcul(Fitxer)
                         
@@ -1392,516 +1579,375 @@ class ZI_GTC:
                                     self.dlg.Progres.setVisible(False)
                                     self.dlg.lblEstatConn.setText('Connectat')
                                     self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                    self.dlg.setEnabled(True)
                                     return
+                                    '''
+                                    drop = 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'"'
+                                    try:
+                                        cur.execute(drop)
+                                        conn.commit()
+                                    except Exception as ex:
+                                        print ("DROP TABLE ERROR LayerExportat")
+                                        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                        message = template.format(type(ex).__name__, ex.args)
+                                        print (message)
+                                        QMessageBox.information(None, "Error", errorMessage)
+                                        conn.rollback()
+                                        self.eliminaTaulesCalcul(Fitxer)
                                     
-                                arxiu.close()
-                                arxiuLlegit = True
-                            else:
-                                print ("No hi ha l'arxiu")
-                                path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
-                        else:
-                            print ("Cancelat")
-                            trobat = False
-                            self.dlg.Progres.setVisible(False)
-            else:
-                a=time.time()
-    #       *****************************************************************************************************************
-    #       FI CREACIO DE LES TAULES RESUM DESDE EL CSV SUMINISTRAT 
-    #       *****************************************************************************************************************
-            progressMessageBar = self.bar.createMessage('Processant:')
-            progress = QProgressBar()
-            progress.setMaximum(100)
-            progress.setAlignment(Qt.AlignLeft|Qt.AlignTop)
-            progressMessageBar.layout().addWidget(progress)
-            #progressMessageBar.layout().addWidget(self.dlg.progress)
-            self.bar.pushWidget(progressMessageBar, Qgis.Info)
-            self.bar.setEnabled(False)
-            progress.setValue(0)
-           
-            progress.setValue(10)
-    
-            self.dlg.Progres.setValue(10)
-            QApplication.processEvents()
-            fesCalcul = True      
-            if (self.dlg.chk_poblacio.isChecked() and not arxiuLlegit):
-                fesCalcul = False
-            elif (self.dlg.chk_poblacio.isChecked() and arxiuLlegit):
-                fesCalcul = True
-            else:
-                fesCalcul = True
-            if not(fesCalcul):
-                return
+                                    self.bar.clearWidgets()
+                                    self.dlg.Progres.setValue(0)
+                                    self.dlg.Progres.setVisible(False)
+                                    self.dlg.lblEstatConn.setText('Connectat')
+                                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                    return
+                                    '''
+                            except Exception as ex:
+                                print("ERROR select LayerExportat")
+                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                message = template.format(type(ex).__name__, ex.args)
+                                print (message)
+                                QMessageBox.information(None, "Error", errorMessage)
+                                conn.rollback()
+                                self.eliminaTaulesCalcul(Fitxer)
+                    
+                                self.bar.clearWidgets()
+                                self.dlg.Progres.setValue(0)
+                                self.dlg.Progres.setVisible(False)
+                                self.dlg.lblEstatConn.setText('Connectat')
+                                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                self.dlg.setEnabled(True)
+                                return
+                                
                 
-            if (self.dlg.lblEstatConn.text()=='Connectat'):
-                self.dlg.lblEstatConn.setText('Connectat i processant')
-                
+   
                 if self.dlg.tabWidget_Destino.currentIndex() == 0:
-                    entitat = self.dlg.comboSelPunts.currentText()
+                    sql_total="SELECT * FROM \""+self.dlg.comboSelPunts.currentText()+"\""
                 else:
-                    entitat = self.dlg.comboLeyenda.currentText()
-                               
-                if (entitat !=""):
-                    uri = QgsDataSourceUri()
-    
+                    sql_total="SELECT * FROM \"LayerExportat"+Fitxer+"\""
+                
+                progress.setValue(30)
+
+                self.dlg.Progres.setValue(30)
+                QApplication.processEvents()
+#               *****************************************************************************************************************
+#               INICI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
+#               *****************************************************************************************************************
+                XarxaCarrers = self.dlg.comboGraf.currentText()
+                if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                    sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
+                    buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
+                    vlayer=buffer_resultat['OUTPUT']
+                    vlayer_graf=graf_resultat['OUTPUT']
+
+                    #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
+                    # layer - QGIS vector layer
+                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                    if error[0] != 0:
+                        iface.messageBar().pushMessage(u'Error', error[1])
+                        
+                    #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                    #if error[0] != 0:
+                    #    iface.messageBar().pushMessage(u'Error', error[1])
+                        
+                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                else:
+                    sql_buffer=self.calcul_graf(sql_total)
+                    if sql_buffer=="ERROR":
+                        self.dlg.setEnabled(True)
+                        return
+#               *****************************************************************************************************************
+#               FI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
+#               ***(**************************************************************************************************************
+                #print (sql_buffer)
+                progress.setValue(60)
+                self.dlg.Progres.setValue(60)
+                QApplication.processEvents()
+                sql_ZI=sql_buffer 
+                sql_PART1_ZI="SELECT row_number() OVER () AS \"id\",ILL.\"D_S_I\",ILL.\"geom\",RS.\"Habitants\" FROM (select \"ILLES\".\"D_S_I\",\"ILLES\".\"geom\" from \"ILLES\" where \"ILLES\".\"id\" NOT IN (select \"ILLES\".\"id\" from \"ILLES\" INNER JOIN ("
+                sql_TOTAL_ZI=sql_PART1_ZI+sql_ZI+") TOT2 on ST_Intersects(\"ILLES\".\"geom\",TOT2.\"the_geom\"))) ILL JOIN \"Illes_Resum_"+Fitxer+"\" RS on (ILL.\"D_S_I\" = RS.\"ILLES_Codificades\")"
+                if (self.dlg.chk_poblacio.isChecked()):
+                    if (self.dlg.bt_ILLES.isChecked()):
+                        """Si s'ha seleccionat ILLES"""
+                        #sql_total="select row_number() over() as id_sql, ILLES_RESUM.\"id\",ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_diss_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_diss_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        sql_total="select distinct(ILLES_RESUM.\"id\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                    if (self.dlg.bt_Parcel.isChecked()):
+                        """Si s'ha seleccionat PARCELES"""
+                        sql_total="select distinct(PARCELES_RESUM.\"id\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"UTM\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        
+                    if (self.dlg.bt_Portals.isChecked()):
+                        """Si s'ha seleccionat PORTALS"""
+                        sql_total="select distinct(PORTALS_RESUM.\"id\"),PORTALS_RESUM.\"geom\",PORTALS_RESUM.\"Habitants\" from (select * from \"dintreilla\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"dintreilla\".\"Carrer_Num_Bis\"=\"Resum_Temp_"+Fitxer+"\".\"NPolicia\") PORTALS_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PORTALS_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        
+    #               *****************************************************************************************************************
+    #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
+    #               *****************************************************************************************************************
+    #                uri.setDataSource("","("+sql_total+")","geom","","id")
+
+                    QApplication.processEvents()
+                    #uri.setDataSource("","("+sql_total+")",geometria,"","id_sql")
+                    uri.setDataSource("","("+sql_total+")","geom","","id")
+                    QApplication.processEvents()
+                    
+                    titol=self.dlg.TB_titol.text().replace("'","\'")
+                    titol2='Cobertura de '
+                    titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
+                    vlayer = QgsVectorLayer(uri.uri(False), titol3.decode('utf8'), "postgres")
+                    QApplication.processEvents()
+                    if vlayer.isValid():
+                        Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+                        """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
+                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                        """Es carrega el Shape a l'entorn del QGIS"""
+                        vlayer = QgsVectorLayer(os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
+                        symbols = vlayer.renderer().symbols(QgsRenderContext())
+                        symbol=symbols[0]
+                        symbol.setColor(self.dlg.color.palette().color(1))
+                        QgsProject.instance().addMapLayer(vlayer,False)
+                        root = QgsProject.instance().layerTreeRoot()
+                        myLayerNode=QgsLayerTreeLayer(vlayer)
+                        root.insertChildNode(0,myLayerNode)
+                        #root.insertLayer(0,vlayer)
+                        myLayerNode.setCustomProperty("showFeatureCount", True)
+                        iface.mapCanvas().refresh()
+                        #qgis.utils.iface.legendInterface().refreshLayerSymbology(vlayer)
+                    else:
+                        print("error Cobertura")
+                    progress.setValue(70)
+                    self.dlg.Progres.setValue(70)
+                    QApplication.processEvents()
+    #               *****************************************************************************************************************
+    #               FI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
+    #               *****************************************************************************************************************
+                    
+    #               *****************************************************************************************************************
+    #               INICI CARREGA DEL TEMATIC DE POBLACIO NO AFECTADA  
+    #               *****************************************************************************************************************
+                    """ Calcul dels habitants afectats"""
+                    sql = "SELECT SUM(SUMA.\"Habitants\") from ("+sql_total+") SUMA"
+                    #print (sql)
                     try:
-                        uri.setConnection(host1,port1,nomBD1,usuari1,contra1)
-                        print ("Connectat")
-                        #print (uri.connectionInfo())
+                        cur.execute(sql)
+                        Habitants_afectats = cur.fetchone()
                     except Exception as ex:
-                        print ("Error a la connexio")
+                        print ("Error SELECT suma habitants")
                         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
                         message = template.format(type(ex).__name__, ex.args)
                         print (message)
-                        QMessageBox.information(None, "Error", "Error a la connexio")
+                        QMessageBox.information(None, "Error", "Error SELECT suma habitants")
+                        conn.rollback()
                         self.eliminaTaulesCalcul(Fitxer)
-            
                         self.bar.clearWidgets()
                         self.dlg.Progres.setValue(0)
                         self.dlg.Progres.setVisible(False)
                         self.dlg.lblEstatConn.setText('Connectat')
                         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                        self.dlg.setEnabled(True)
                         return
-                                        
-                    
-                    #********************************************************************************************************
-                    #    Afegir l'exportació del layer, i posteriorment llençar un avis en cas de que l'entitat sigui buida 
-                    #********************************************************************************************************
-                    '''Exportar temporalment la entitat seleccionada a la BBDD'''
-                    layers = QgsProject.instance().mapLayers().values()
-                    if layers != None:
-                        for layer in layers:
-                            if layer.name() == self.dlg.comboLeyenda.currentText():
-                                error = QgsVectorLayerExporter.exportLayer(layer, 'table="public"."LayerExportat'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", layer.crs(), False)
-                                if error[0] != 0:
-                                    iface.messageBar().pushMessage(u'Error', error[1])
-                                
-                                #cada usuari tindrà la seva taula local temporal "LayerExportat", es una versió Local Temp del Layer exportat de la leyenda.
-                                #Amb l'objectiu de que dos usuaris puguin treballar amb el mateix nom de la taula, eliminant concurrencia.
-                                try:
-                                    sql_SRID="SELECT Find_SRID('public', 'LayerExportat"+Fitxer+"', 'geom')"
-                                    cur.execute(sql_SRID)
-                                except Exception as ex:
-                                    print ("ERROR SELECT SRID")
-                                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                    message = template.format(type(ex).__name__, ex.args)
-                                    print (message)
-                                    QMessageBox.information(None, "Error", "ERROR SELECT SRID")
-                                    conn.rollback()
-                                    self.eliminaTaulesCalcul(Fitxer)
-                        
-                                    self.bar.clearWidgets()
-                                    self.dlg.Progres.setValue(0)
-                                    self.dlg.Progres.setVisible(False)
-                                    self.dlg.lblEstatConn.setText('Connectat')
-                                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                    return
-                                auxlist = cur.fetchall()
-                                Valor_SRID=auxlist[0][0]
-                                alter = 'ALTER TABLE "LayerExportat'+Fitxer+'" ALTER COLUMN geom TYPE geometry(Point,'+str(Valor_SRID)+') USING ST_GeometryN(geom,1);'
-                                
-                                try:
-                                    cur.execute(alter)
-                                    conn.commit()
-                                except Exception as ex:
-                                    print ("ALTER TABLE ERROR_geometry")
-                                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                    message = template.format(type(ex).__name__, ex.args)
-                                    print (message)
-                                    QMessageBox.information(None, "Error", "ALTER TABLE ERROR_geometry")
-                                    conn.rollback()
-                                    self.eliminaTaulesCalcul(Fitxer)
-                        
-                                    self.bar.clearWidgets()
-                                    self.dlg.Progres.setValue(0)
-                                    self.dlg.Progres.setVisible(False)
-                                    self.dlg.lblEstatConn.setText('Connectat')
-                                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                    return
-                                    
-                                    
-                                    
-                                select = 'select count (*) from "LayerExportat'+Fitxer+'"'
-                                
-                                try:                
-                                    cur.execute(select)
-                                    auxlist = cur.fetchall()
-                                    if auxlist[0][0] == 0:
-                                        ErrorMessage = 'La entitat escollida es buida'
-                                        QMessageBox.information(None, "Error", ErrorMessage+'\n')
-                                        conn.rollback()
-                                        self.eliminaTaulesCalcul(Fitxer)
-                            
-                                        self.bar.clearWidgets()
-                                        self.dlg.Progres.setValue(0)
-                                        self.dlg.Progres.setVisible(False)
-                                        self.dlg.lblEstatConn.setText('Connectat')
-                                        self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                        return
-                                        '''
-                                        drop = 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'"'
-                                        try:
-                                            cur.execute(drop)
-                                            conn.commit()
-                                        except Exception as ex:
-                                            print ("DROP TABLE ERROR LayerExportat")
-                                            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                            message = template.format(type(ex).__name__, ex.args)
-                                            print (message)
-                                            QMessageBox.information(None, "Error", errorMessage)
-                                            conn.rollback()
-                                            self.eliminaTaulesCalcul(Fitxer)
-                                        
-                                        self.bar.clearWidgets()
-                                        self.dlg.Progres.setValue(0)
-                                        self.dlg.Progres.setVisible(False)
-                                        self.dlg.lblEstatConn.setText('Connectat')
-                                        self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                        return
-                                        '''
-                                except Exception as ex:
-                                    print("ERROR select LayerExportat")
-                                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                    message = template.format(type(ex).__name__, ex.args)
-                                    print (message)
-                                    QMessageBox.information(None, "Error", errorMessage)
-                                    conn.rollback()
-                                    self.eliminaTaulesCalcul(Fitxer)
-                        
-                                    self.bar.clearWidgets()
-                                    self.dlg.Progres.setValue(0)
-                                    self.dlg.Progres.setVisible(False)
-                                    self.dlg.lblEstatConn.setText('Connectat')
-                                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                    return
-                                    
-                    
-                    
-                    
-                    
-                    
-                    if self.dlg.tabWidget_Destino.currentIndex() == 0:
-                        sql_total="SELECT * FROM \""+self.dlg.comboSelPunts.currentText()+"\""
+                    """Calcul dels habitants totals"""
+                    if (self.dlg.bt_ILLES.isChecked()):
+                        sql = "SELECT SUM(SUMA.\"Habitants\") from (SELECT \"Habitants\" from \"Illes_Resum_"+Fitxer+"\") SUMA"
                     else:
-                        sql_total="SELECT * FROM \"LayerExportat"+Fitxer+"\""
-                    
-                    progress.setValue(30)
-    
-                    self.dlg.Progres.setValue(30)
-                    QApplication.processEvents()
-    #               *****************************************************************************************************************
-    #               INICI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
-    #               *****************************************************************************************************************
-                    XarxaCarrers = self.dlg.comboGraf.currentText()
-                    if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
-                        sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
-                        buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
-                        vlayer=buffer_resultat['OUTPUT']
-                        vlayer_graf=graf_resultat['OUTPUT']
-    
-                        #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
-                        # layer - QGIS vector layer
-                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                        if error[0] != 0:
-                            iface.messageBar().pushMessage(u'Error', error[1])
-                            
-                        #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                        #if error[0] != 0:
-                        #    iface.messageBar().pushMessage(u'Error', error[1])
-                            
-                        sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
-                    else:
-                        sql_buffer=self.calcul_graf(sql_total)
-                        if sql_buffer=="ERROR":
-                            return
-    #               *****************************************************************************************************************
-    #               FI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
-    #               ***(**************************************************************************************************************
-                    #print (sql_buffer)
-                    progress.setValue(60)
-                    self.dlg.Progres.setValue(60)
-                    QApplication.processEvents()
-                    sql_ZI=sql_buffer 
-                    sql_PART1_ZI="SELECT row_number() OVER () AS \"id\",ILL.\"D_S_I\",ILL.\"geom\",RS.\"Habitants\" FROM (select \"ILLES\".\"D_S_I\",\"ILLES\".\"geom\" from \"ILLES\" where \"ILLES\".\"id\" NOT IN (select \"ILLES\".\"id\" from \"ILLES\" INNER JOIN ("
-                    sql_TOTAL_ZI=sql_PART1_ZI+sql_ZI+") TOT2 on ST_Intersects(\"ILLES\".\"geom\",TOT2.\"the_geom\"))) ILL JOIN \"Illes_Resum_"+Fitxer+"\" RS on (ILL.\"D_S_I\" = RS.\"ILLES_Codificades\")"
-                    if (self.dlg.chk_poblacio.isChecked()):
-                        if (self.dlg.bt_ILLES.isChecked()):
-                            """Si s'ha seleccionat ILLES"""
-                            #sql_total="select row_number() over() as id_sql, ILLES_RESUM.\"id\",ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_diss_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_diss_"+Fitxer+"\".\"the_geom\",1)=TRUE"
-                            sql_total="select distinct(ILLES_RESUM.\"id\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
-                        if (self.dlg.bt_Parcel.isChecked()):
-                            """Si s'ha seleccionat PARCELES"""
-                            sql_total="select distinct(PARCELES_RESUM.\"id\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"UTM\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
-                            
-                        if (self.dlg.bt_Portals.isChecked()):
-                            """Si s'ha seleccionat PORTALS"""
-                            sql_total="select distinct(PORTALS_RESUM.\"id\"),PORTALS_RESUM.\"geom\",PORTALS_RESUM.\"Habitants\" from (select * from \"dintreilla\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"dintreilla\".\"Carrer_Num_Bis\"=\"Resum_Temp_"+Fitxer+"\".\"NPolicia\") PORTALS_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PORTALS_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
-                            
-        #               *****************************************************************************************************************
-        #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
-        #               *****************************************************************************************************************
-        #                uri.setDataSource("","("+sql_total+")","geom","","id")
-    
-                        QApplication.processEvents()
-                        #uri.setDataSource("","("+sql_total+")",geometria,"","id_sql")
-                        uri.setDataSource("","("+sql_total+")","geom","","id")
-                        QApplication.processEvents()
-                        
+                        sql = "SELECT SUM(SUMA.\"Habitants\") from (SELECT \"Habitants\" from \"Resum_Temp_"+Fitxer+"\") SUMA"
+                    try:
+                        cur.execute(sql)
+                        Habitants_totals = cur.fetchone()
+                    except Exception as ex:
+                        print ("Error SELECT Suma")
+                        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                        message = template.format(type(ex).__name__, ex.args)
+                        print (message)
+                        QMessageBox.information(None, "Error", "Error SELECT Suma")
+                        conn.rollback()
+                        self.eliminaTaulesCalcul(Fitxer)
+                        self.bar.clearWidgets()
+                        self.dlg.Progres.setValue(0)
+                        self.dlg.Progres.setVisible(False)
+                        self.dlg.lblEstatConn.setText('Connectat')
+                        self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                        self.dlg.setEnabled(True)
+                        return
+                    self.dlg.lblNum.setText(str("{0:.2f}%".format(Habitants_afectats[0]/Habitants_totals[0]*100)))
+                    print ("HABITANTS AFECTATS: "+str(Habitants_afectats[0]))
+                    print ("HABITANTS TOTALS: "+str(Habitants_totals[0]))
+                    if (self.dlg.checkBoxPoblacioNoAfectada.isChecked()):
+                        """Creació del tematic de població no afectada"""
+                        uri.setDataSource("","("+sql_TOTAL_ZI+")","geom","","id")
                         titol=self.dlg.TB_titol.text().replace("'","\'")
-                        titol2='Cobertura de '
+                        titol2='Temàtic de població no afectada: '
                         titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
-                        vlayer = QgsVectorLayer(uri.uri(False), titol3.decode('utf8'), "postgres")
-                        QApplication.processEvents()
+                        vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
                         if vlayer.isValid():
-                            Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+                            Tematic=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                             """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                             """Es carrega el Shape a l'entorn del QGIS"""
-                            vlayer = QgsVectorLayer(os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
-                            symbols = vlayer.renderer().symbols(QgsRenderContext())
-                            symbol=symbols[0]
-                            symbol.setColor(self.dlg.color.palette().color(1))
+                            vlayer = QgsVectorLayer(os.environ['TMP']+"/Tematic_"+Tematic+".shp", titol3.decode('utf8'), "ogr")
+                            vlayer.setProviderEncoding(u'UTF-8')
+                            vlayer.dataProvider().setEncoding(u'UTF-8')
+                            '''
+                            cur.execute("DROP TABLE IF EXISTS \"Illes_Resum_"+Fitxer+"\"")
+                            conn.commit()
+                            
+                            cur.execute("DROP TABLE IF EXISTS \"Resum_Temp_"+Fitxer+"\"")
+                            conn.commit()                        
+                            '''
+                            fieldname="Habitants"
+                            numberOfClasses=5
+                            myRangeList=[]
+                            mysymbol=QgsFillSymbol()
+                            colorRamp=QgsGradientColorRamp( QColor( 230, 230, 230 ), QColor( 60, 60, 60 ))
+                            
+                            format = QgsRendererRangeLabelFormat()
+                            template = "%1 a %2 habitants"
+                            precision = 0
+                            format.setFormat(template)
+                            format.setPrecision(precision)
+                            format.setTrimTrailingZeroes(True)
+                            renderer=QgsGraduatedSymbolRenderer.createRenderer(vlayer,fieldname,numberOfClasses,QgsGraduatedSymbolRenderer.Quantile,mysymbol,colorRamp)
+                            renderer.setLabelFormat(format,True)
+                            vlayer.setRenderer(renderer)
+                            
                             QgsProject.instance().addMapLayer(vlayer,False)
                             root = QgsProject.instance().layerTreeRoot()
                             myLayerNode=QgsLayerTreeLayer(vlayer)
                             root.insertChildNode(0,myLayerNode)
-                            #root.insertLayer(0,vlayer)
                             myLayerNode.setCustomProperty("showFeatureCount", True)
                             iface.mapCanvas().refresh()
                             #qgis.utils.iface.legendInterface().refreshLayerSymbology(vlayer)
                         else:
-                            print("error Cobertura")
-                        progress.setValue(70)
-                        self.dlg.Progres.setValue(70)
-                        QApplication.processEvents()
-        #               *****************************************************************************************************************
-        #               FI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
-        #               *****************************************************************************************************************
-                        
-        #               *****************************************************************************************************************
-        #               INICI CARREGA DEL TEMATIC DE POBLACIO NO AFECTADA  
-        #               *****************************************************************************************************************
-                        """ Calcul dels habitants afectats"""
-                        sql = "SELECT SUM(SUMA.\"Habitants\") from ("+sql_total+") SUMA"
-                        #print (sql)
-                        try:
-                            cur.execute(sql)
-                            Habitants_afectats = cur.fetchone()
-                        except Exception as ex:
-                            print ("Error SELECT suma habitants")
-                            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                            message = template.format(type(ex).__name__, ex.args)
-                            print (message)
-                            QMessageBox.information(None, "Error", "Error SELECT suma habitants")
-                            conn.rollback()
-                            self.eliminaTaulesCalcul(Fitxer)
-                            self.bar.clearWidgets()
-                            self.dlg.Progres.setValue(0)
-                            self.dlg.Progres.setVisible(False)
-                            self.dlg.lblEstatConn.setText('Connectat')
-                            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                            return
-                        """Calcul dels habitants totals"""
-                        if (self.dlg.bt_ILLES.isChecked()):
-                            sql = "SELECT SUM(SUMA.\"Habitants\") from (SELECT \"Habitants\" from \"Illes_Resum_"+Fitxer+"\") SUMA"
-                        else:
-                            sql = "SELECT SUM(SUMA.\"Habitants\") from (SELECT \"Habitants\" from \"Resum_Temp_"+Fitxer+"\") SUMA"
-                        try:
-                            cur.execute(sql)
-                            Habitants_totals = cur.fetchone()
-                        except Exception as ex:
-                            print ("Error SELECT Suma")
-                            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                            message = template.format(type(ex).__name__, ex.args)
-                            print (message)
-                            QMessageBox.information(None, "Error", "Error SELECT Suma")
-                            conn.rollback()
-                            self.eliminaTaulesCalcul(Fitxer)
-                            self.bar.clearWidgets()
-                            self.dlg.Progres.setValue(0)
-                            self.dlg.Progres.setVisible(False)
-                            self.dlg.lblEstatConn.setText('Connectat')
-                            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                            return
-                        self.dlg.lblNum.setText(str("{0:.2f}%".format(Habitants_afectats[0]/Habitants_totals[0]*100)))
-                        print ("HABITANTS AFECTATS: "+str(Habitants_afectats[0]))
-                        print ("HABITANTS TOTALS: "+str(Habitants_totals[0]))
-                        if (self.dlg.checkBoxPoblacioNoAfectada.isChecked()):
-                            """Creació del tematic de població no afectada"""
-                            uri.setDataSource("","("+sql_TOTAL_ZI+")","geom","","id")
-                            titol=self.dlg.TB_titol.text().replace("'","\'")
-                            titol2='Temàtic de població no afectada: '
-                            titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
-                            vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
-                            if vlayer.isValid():
-                                Tematic=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-                                """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                                error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
-                                """Es carrega el Shape a l'entorn del QGIS"""
-                                vlayer = QgsVectorLayer(os.environ['TMP']+"/Tematic_"+Tematic+".shp", titol3.decode('utf8'), "ogr")
-                                vlayer.setProviderEncoding(u'UTF-8')
-                                vlayer.dataProvider().setEncoding(u'UTF-8')
-                                '''
-                                cur.execute("DROP TABLE IF EXISTS \"Illes_Resum_"+Fitxer+"\"")
-                                conn.commit()
-                                
-                                cur.execute("DROP TABLE IF EXISTS \"Resum_Temp_"+Fitxer+"\"")
-                                conn.commit()                        
-                                '''
-                                fieldname="Habitants"
-                                numberOfClasses=5
-                                myRangeList=[]
-                                mysymbol=QgsFillSymbol()
-                                colorRamp=QgsGradientColorRamp( QColor( 230, 230, 230 ), QColor( 60, 60, 60 ))
-                                
-                                format = QgsRendererRangeLabelFormat()
-                                template = "%1 a %2 habitants"
-                                precision = 0
-                                format.setFormat(template)
-                                format.setPrecision(precision)
-                                format.setTrimTrailingZeroes(True)
-                                renderer=QgsGraduatedSymbolRenderer.createRenderer(vlayer,fieldname,numberOfClasses,QgsGraduatedSymbolRenderer.Quantile,mysymbol,colorRamp)
-                                renderer.setLabelFormat(format,True)
-                                vlayer.setRenderer(renderer)
-                                
-                                QgsProject.instance().addMapLayer(vlayer,False)
-                                root = QgsProject.instance().layerTreeRoot()
-                                myLayerNode=QgsLayerTreeLayer(vlayer)
-                                root.insertChildNode(0,myLayerNode)
-                                myLayerNode.setCustomProperty("showFeatureCount", True)
-                                iface.mapCanvas().refresh()
-                                #qgis.utils.iface.legendInterface().refreshLayerSymbology(vlayer)
-                            else:
-                                QMessageBox.information(None, "LAYER ERROR 1:", "%s\n\nThe layer %s is not valid" % ("error","nom_layer"))
-                    progress.setValue(80)
-                    self.dlg.Progres.setValue(80)
-                    QApplication.processEvents()
-    #               *****************************************************************************************************************
-    #               FI CARREGA DEL TEMATIC DE POBLACIO NO AFECTADA  
-    #               *****************************************************************************************************************
-                    
-    #               *****************************************************************************************************************
-    #               INICI CARREGA DE LA COBERTURA DEL BUFFER DEL GRAF  
-    #               *****************************************************************************************************************
-                    if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
-                        sql_total1="SELECT * FROM Buffer_Final_"+Fitxer
-                    else:
-                        sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"the_geom\" FROM Buffer_Final_"+Fitxer
-    
-                    """ Creació del tematic del buffer"""
-                    uri.setDataSource("","("+sql_total1+")","the_geom","","id")
+                            QMessageBox.information(None, "LAYER ERROR 1:", "%s\n\nThe layer %s is not valid" % ("error","nom_layer"))
+                progress.setValue(80)
+                self.dlg.Progres.setValue(80)
+                QApplication.processEvents()
+#               *****************************************************************************************************************
+#               FI CARREGA DEL TEMATIC DE POBLACIO NO AFECTADA  
+#               *****************************************************************************************************************
+                
+#               *****************************************************************************************************************
+#               INICI CARREGA DE LA COBERTURA DEL BUFFER DEL GRAF  
+#               *****************************************************************************************************************
+                if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                    sql_total1="SELECT * FROM Buffer_Final_"+Fitxer
+                else:
+                    sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"the_geom\" FROM Buffer_Final_"+Fitxer
+
+                """ Creació del tematic del buffer"""
+                uri.setDataSource("","("+sql_total1+")","the_geom","","id")
+                titol=self.dlg.TB_titol.text().replace("'","\'")
+                titol2='ZI: '
+                titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
+                vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
+                if vlayer.isValid():
+                    Area=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+                    """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
+                    error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                    vlayer=None
+                    """Es carrega el Shape a l'entorn del QGIS"""
+                    vlayer = QgsVectorLayer(os.environ['TMP']+"/Area_"+Area+".shp", titol3.decode('utf8'), "ogr")
+                    vlayer.setProviderEncoding(u'UTF-8')
+                    vlayer.dataProvider().setEncoding(u'UTF-8')
+                    symbols = vlayer.renderer().symbols(QgsRenderContext())
+                    symbol=symbols[0]
+                    symbol.setColor(self.dlg.colorArea.palette().color(1))
+                    vlayer.setOpacity(0.4)
+                    QgsProject.instance().addMapLayer(vlayer,False)
+                    root = QgsProject.instance().layerTreeRoot()
+                    myLayerNode=QgsLayerTreeLayer(vlayer)
+                    root.insertChildNode(0,myLayerNode)
+                    myLayerNode.setCustomProperty("showFeatureCount", True)
+                    iface.mapCanvas().refresh()
+                    #iface.legendInterface().refreshLayerSymbology(vlayer)
+
+                else:
+                    print("error ZI:")
+                progress.setValue(90)
+                self.dlg.Progres.setValue(90)
+                QApplication.processEvents()
+#               *****************************************************************************************************************
+#               FI CARREGA DE LA COBERTURA DEL BUFFER DEL GRAF  
+#               *****************************************************************************************************************
+                
+#               *****************************************************************************************************************
+#               INICI CARREGA DEL GRAF  
+#               *****************************************************************************************************************
+                if (self.dlg.checkBoxDibuix.isChecked()):
+                    """ Creació del tematic del graf"""
+                    uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","the_geom","","id")
                     titol=self.dlg.TB_titol.text().replace("'","\'")
-                    titol2='ZI: '
+                    titol2='Graf: '
                     titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
                     vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
+                    if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                        vlayer=vlayer_graf
+                    else:
+                        vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
+
                     if vlayer.isValid():
-                        Area=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+                        Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
-                        vlayer=None
+                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
-                        vlayer = QgsVectorLayer(os.environ['TMP']+"/Area_"+Area+".shp", titol3.decode('utf8'), "ogr")
+                        vlayer = QgsVectorLayer(os.environ['TMP']+"/Graf_"+Graf+".shp", titol3.decode('utf8'), "ogr")
                         vlayer.setProviderEncoding(u'UTF-8')
                         vlayer.dataProvider().setEncoding(u'UTF-8')
+                        #cur.execute("DROP TABLE IF EXISTS Graf_utilitzat_"+Fitxer)
+                        #conn.commit()
+
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
-                        symbol.setColor(self.dlg.colorArea.palette().color(1))
-                        vlayer.setOpacity(0.4)
+                        symbol.setColor(self.dlg.color.palette().color(1))
+                        if (self.dlg.comboTras.currentText()=='Estret'):
+                            symbol.setWidth(0.5)
+                        if (self.dlg.comboTras.currentText()=='Mitjà'):
+                            symbol.setWidth(1.0)
+                        if (self.dlg.comboTras.currentText()=='Ample'):
+                            symbol.setWidth(1.5)
                         QgsProject.instance().addMapLayer(vlayer,False)
                         root = QgsProject.instance().layerTreeRoot()
                         myLayerNode=QgsLayerTreeLayer(vlayer)
                         root.insertChildNode(0,myLayerNode)
                         myLayerNode.setCustomProperty("showFeatureCount", True)
                         iface.mapCanvas().refresh()
-                        #iface.legendInterface().refreshLayerSymbology(vlayer)
-    
+                        #qgis.utils.iface.legendInterface().refreshLayerSymbology(vlayer)
                     else:
-                        print("error ZI:")
-                    progress.setValue(90)
-                    self.dlg.Progres.setValue(90)
-                    QApplication.processEvents()
-    #               *****************************************************************************************************************
-    #               FI CARREGA DE LA COBERTURA DEL BUFFER DEL GRAF  
-    #               *****************************************************************************************************************
-                    
-    #               *****************************************************************************************************************
-    #               INICI CARREGA DEL GRAF  
-    #               *****************************************************************************************************************
-                    if (self.dlg.checkBoxDibuix.isChecked()):
-                        """ Creació del tematic del graf"""
-                        uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","the_geom","","id")
-                        titol=self.dlg.TB_titol.text().replace("'","\'")
-                        titol2='Graf: '
-                        titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
-                        vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
-                        if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
-                            vlayer=vlayer_graf
-                        else:
-                            vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
-    
-                        if vlayer.isValid():
-                            Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-                            """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
-                            """Es carrega el Shape a l'entorn del QGIS"""
-                            vlayer = QgsVectorLayer(os.environ['TMP']+"/Graf_"+Graf+".shp", titol3.decode('utf8'), "ogr")
-                            vlayer.setProviderEncoding(u'UTF-8')
-                            vlayer.dataProvider().setEncoding(u'UTF-8')
-                            #cur.execute("DROP TABLE IF EXISTS Graf_utilitzat_"+Fitxer)
-                            #conn.commit()
-    
-                            symbols = vlayer.renderer().symbols(QgsRenderContext())
-                            symbol=symbols[0]
-                            symbol.setColor(self.dlg.color.palette().color(1))
-                            if (self.dlg.comboTras.currentText()=='Estret'):
-                                symbol.setWidth(0.5)
-                            if (self.dlg.comboTras.currentText()=='Mitjà'):
-                                symbol.setWidth(1.0)
-                            if (self.dlg.comboTras.currentText()=='Ample'):
-                                symbol.setWidth(1.5)
-                            QgsProject.instance().addMapLayer(vlayer,False)
-                            root = QgsProject.instance().layerTreeRoot()
-                            myLayerNode=QgsLayerTreeLayer(vlayer)
-                            root.insertChildNode(0,myLayerNode)
-                            myLayerNode.setCustomProperty("showFeatureCount", True)
-                            iface.mapCanvas().refresh()
-                            #qgis.utils.iface.legendInterface().refreshLayerSymbology(vlayer)
-                        else:
-                            QMessageBox.information(None, "LAYER ERROR 3:", "%s\n\nThe layer %s is not valid" % ("error","nom_layer"))
-                    
-                    progress.setValue(0)
-                    self.bar.clearWidgets()
-                    self.dlg.Progres.setValue(0)
-                    self.dlg.Progres.setVisible(False)
-                    QApplication.processEvents()
-    #               *****************************************************************************************************************
-    #               FI CARREGA DEL GRAF  
-    #               *****************************************************************************************************************
-    
-                else:
-                    QMessageBox.information(None, 'Informació:', 'No hi ha cap element seleccionat')
-                    
+                        QMessageBox.information(None, "LAYER ERROR 3:", "%s\n\nThe layer %s is not valid" % ("error","nom_layer"))
+                
+                progress.setValue(0)
+                self.bar.clearWidgets()
+                self.dlg.Progres.setValue(0)
+                self.dlg.Progres.setVisible(False)
+                QApplication.processEvents()
+#               *****************************************************************************************************************
+#               FI CARREGA DEL GRAF  
+#               *****************************************************************************************************************
+
             else:
-                QMessageBox.information(None, 'Informació:', 'No està connectat a cap base de dades')
-                        
-            
-            self.eliminaTaulesCalcul(Fitxer)
-            
-            
-            nom_conn=self.dlg.comboConnexio.currentText()
-            select = 'Selecciona connexió'
-            if nom_conn==select:
-                self.dlg.lblEstatConn.setText('No connectat')
-                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
-            else:
-                self.dlg.lblEstatConn.setText('Connectat')
-                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-            print ("Durada: "+str(int(time.time()-a))+" s.")
-            self.bar.setEnabled(True)
-            self.bar.clearWidgets()
-            self.dlg.Progres.setVisible(False)
-            self.dlg.Progres.setValue(0)              
-            QApplication.processEvents()
+                QMessageBox.information(None, 'Informació:', 'No hi ha cap element seleccionat')
+                
+        else:
+            QMessageBox.information(None, 'Informació:', 'No està connectat a cap base de dades')
+                    
         
+        self.eliminaTaulesCalcul(Fitxer)
+        
+        
+        nom_conn=self.dlg.comboConnexio.currentText()
+        select = 'Selecciona connexió'
+        if nom_conn==select:
+            self.dlg.lblEstatConn.setText('No connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
+        else:
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+        print ("Durada: "+str(int(time.time()-a))+" s.")
+        self.bar.setEnabled(True)
+        self.bar.clearWidgets()
+        self.dlg.Progres.setVisible(False)
+        self.dlg.Progres.setValue(0)
+        self.dlg.setEnabled(True)              
+        QApplication.processEvents()
+    
     
     
     def eliminaTaulesCalcul(self,Fitxer):
@@ -1915,6 +1961,7 @@ class ZI_GTC:
         drop += 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Graf_utilitzat_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Resum_Temp_'+Fitxer+'";\n'
+        drop += "drop table if exists Graf_utilitzat_"+Fitxer+";\n"
         try:
             cur.execute(drop)
             conn.commit()
@@ -2248,7 +2295,7 @@ class ZI_GTC:
         L_capa=self.dlg.comboLeyenda.currentText()  
              
         if L_capa == '' or L_capa == 'Selecciona una entitat':
-            return
+            return False
         
         errors = self.controlEntitatLeyenda(L_capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.
 
