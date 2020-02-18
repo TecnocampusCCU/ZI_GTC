@@ -2182,6 +2182,7 @@ class ZI_GTC:
         self.dlg.chk_calc_local.setChecked(True)
         self.dlg.chk_calc_local.setVisible(True)
         QApplication.processEvents()
+        self.dlg.setEnabled(True)
         
        
     def on_Change_ComboConn(self):

@@ -10,7 +10,7 @@
 name=ZI_GTC
 qgisMinimumVersion=3.4.0
 description=Calcul Poblacio Afectada
-version=Q3.200212
+version=Q3.200218
 author=CCU
 email=jlopez@tecnocampus.cat
 
