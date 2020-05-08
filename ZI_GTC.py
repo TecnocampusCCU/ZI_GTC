@@ -46,6 +46,8 @@ from qgis.core import QgsRenderContext
 from qgis.core import QgsRendererRangeLabelFormat
 from qgis.core import QgsProject
 from qgis.core import QgsLayerTreeLayer
+from qgis.core import QgsFeature
+from qgis.core import QgsGeometry
 from qgis.utils import iface
 #from PyQt5.QtGui import QProgressBar
 from qgis.core import QgsProcessingFeedback, Qgis,QgsCoordinateReferenceSystem,QgsVectorLayerExporter
@@ -66,7 +68,7 @@ import psycopg2
 from email.header import UTF8
 import os.path
 from macpath import curdir
-
+import collections
 """
 Variables globals per a la connexio
 i per guardar el color dels botons
@@ -85,7 +87,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.200212"
+Versio_modul="V_Q3.200508"
 geometria=""
 
 
@@ -1639,6 +1641,16 @@ class ZI_GTC:
                     buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
                     vlayer=buffer_resultat['OUTPUT']
                     vlayer_graf=graf_resultat['OUTPUT']
+                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                    if error[0] != 0:
+                        iface.messageBar().pushMessage(u'Error', error[1])
+
+                elif (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Temps"):
+                    sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
+                    buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf3(sql_total,sql_xarxa,uri)
+                    vlayer=buffer_resultat['OUTPUT']
+                    vlayer_graf=graf_resultat['OUTPUT']
 
                     #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
                     # layer - QGIS vector layer
@@ -1697,7 +1709,12 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                        save_options = QgsVectorFileWriter.SaveVectorOptions()
+                        save_options.driverName = "ESRI Shapefile"
+                        save_options.fileEncoding = "UTF-8"
+                        transform_context = QgsProject.instance().transformContext()
+                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                        #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
                         vlayer = QgsVectorLayer(os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
@@ -1780,7 +1797,12 @@ class ZI_GTC:
                         if vlayer.isValid():
                             Tematic=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                             """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            save_options = QgsVectorFileWriter.SaveVectorOptions()
+                            save_options.driverName = "ESRI Shapefile"
+                            save_options.fileEncoding = "UTF-8"
+                            transform_context = QgsProject.instance().transformContext()
+                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp",transform_context,save_options)
+                            #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                             """Es carrega el Shape a l'entorn del QGIS"""
                             vlayer = QgsVectorLayer(os.environ['TMP']+"/Tematic_"+Tematic+".shp", titol3.decode('utf8'), "ogr")
                             vlayer.setProviderEncoding(u'UTF-8')
@@ -1827,7 +1849,7 @@ class ZI_GTC:
 #               *****************************************************************************************************************
 #               INICI CARREGA DE LA COBERTURA DEL BUFFER DEL GRAF  
 #               *****************************************************************************************************************
-                if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                if (self.dlg.chk_calc_local.isChecked()): # and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
                     sql_total1="SELECT * FROM Buffer_Final_"+Fitxer
                 else:
                     sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"the_geom\" FROM Buffer_Final_"+Fitxer
@@ -1841,7 +1863,12 @@ class ZI_GTC:
                 if vlayer.isValid():
                     Area=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                     """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                    error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                    save_options = QgsVectorFileWriter.SaveVectorOptions()
+                    save_options.driverName = "ESRI Shapefile"
+                    save_options.fileEncoding = "UTF-8"
+                    transform_context = QgsProject.instance().transformContext()
+                    error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", transform_context,save_options)
+                    #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                     vlayer=None
                     """Es carrega el Shape a l'entorn del QGIS"""
                     vlayer = QgsVectorLayer(os.environ['TMP']+"/Area_"+Area+".shp", titol3.decode('utf8'), "ogr")
@@ -1873,20 +1900,25 @@ class ZI_GTC:
 #               *****************************************************************************************************************
                 if (self.dlg.checkBoxDibuix.isChecked()):
                     """ Creació del tematic del graf"""
-                    uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","the_geom","","id")
                     titol=self.dlg.TB_titol.text().replace("'","\'")
                     titol2='Graf: '
                     titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
-                    vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
-                    if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                    #vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
+                    if (self.dlg.chk_calc_local.isChecked()):# and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
                         vlayer=vlayer_graf
                     else:
+                        uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","the_geom","","id")
                         vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
 
                     if vlayer.isValid():
                         Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                        save_options = QgsVectorFileWriter.SaveVectorOptions()
+                        save_options.driverName = "ESRI Shapefile"
+                        save_options.fileEncoding = "UTF-8"
+                        transform_context = QgsProject.instance().transformContext()
+                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp",transform_context,save_options)
+                        #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
                         vlayer = QgsVectorLayer(os.environ['TMP']+"/Graf_"+Graf+".shp", titol3.decode('utf8'), "ogr")
                         vlayer.setProviderEncoding(u'UTF-8')
@@ -1955,8 +1987,9 @@ class ZI_GTC:
         global conn
         '''
         Aquesta funció s'encarrega d'eliminar les taules utilitzades durant el càlcul
-        '''     
-        drop = 'DROP TABLE IF EXISTS "buffer_final_'+Fitxer+'";\n'
+        '''   
+        drop = ''  
+        drop += 'DROP TABLE IF EXISTS "buffer_final_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Illes_Resum_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Graf_utilitzat_'+Fitxer+'";\n'
@@ -2037,6 +2070,413 @@ class ZI_GTC:
                                                              "OUTPUT": 'memory:'})        
         
         return result_buffer_dissolve,result_dissolve,buffer_dissolved
+    
+    def troba_distancia(self,linea,punt):
+        distancia=linea.geometry().lineLocatePoint(punt.geometry())
+        return distancia
+    def troba_posicio(self,id,llista_id):
+        resultat=[]
+        for j,x in enumerate(llista_id):
+            #print (x)
+            if id==x:
+                #print ("id:"+str(id))
+                resultat.append(j)
+        return resultat
+        
+    def calcula_distancies(self,linea,posicio,punts):
+        resultat=[]
+        for i in range(len(posicio)):
+            #print (posicio[i])
+            resultat.append([posicio[i],self.troba_distancia(linea,punts[posicio[i]])])
+        resultat=sorted(resultat, key=lambda x: x[1])
+        return resultat
+    
+    def Calcula_VEL_KMH(self,xarxa,crs,uri):
+         # Invertir dirección de línea
+        alg_params = {
+        'INPUT': xarxa,
+        'OUTPUT': 'memory:'
+        }
+        outputs={}
+        outputs['InvertirDireccinDeLnea'] = processing.run('native:reverselinedirection', alg_params)
+        
+        if (self.dlg.chk_CostInvers.isChecked()):
+
+            # VEL_PS=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': outputs['InvertirDireccinDeLnea']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps0'] = processing.run('qgis:fieldcalculator', alg_params)
+    
+            # VEL_PS_INV=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': xarxa,
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps_inv0'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+           # CREACIO_VEL_KMH_INV
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '\"VELOCITAT_PS_INV\"*60/1000',
+                'INPUT': outputs['Vel_ps0']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_inv'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+            # CREACIO_VEL_KMH_DIREC
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': 'VELOCITAT_PS*60/1000',
+                'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_direc'] = processing.run('qgis:fieldcalculator', alg_params)
+                    
+        else:
+            # VEL_PS=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': outputs['InvertirDireccinDeLnea']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps0'] = processing.run('qgis:fieldcalculator', alg_params)
+    
+            # VEL_PS_INV=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': xarxa,
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps_inv0'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+           # CREACIO_VEL_KMH_INV
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '\"VELOCITAT_PS\"*60/1000',
+                'INPUT': outputs['Vel_ps0']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_inv'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+            # CREACIO_VEL_KMH_DIREC
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': 'VELOCITAT_PS*60/1000',
+                'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_direc'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+        # Unir capas vectoriales
+        alg_params = {
+            'CRS': QgsCoordinateReferenceSystem('EPSG:'+str(crs)),
+            'LAYERS': [outputs['Creacio_vel_kmh_direc']['OUTPUT'],outputs['Creacio_vel_kmh_inv']['OUTPUT']],
+            'OUTPUT': 'memory:'
+        }
+        outputs['UnirCapasVectoriales'] = processing.run('native:mergevectorlayers', alg_params)
+    
+        # DIRECCIO
+        alg_params = {
+            'FIELD_LENGTH': 10,
+            'FIELD_NAME': 'DIRECCIO',
+            'FIELD_PRECISION': 3,
+            'FIELD_TYPE': 2,
+            'FORMULA': '\'D\'',
+            'INPUT': outputs['UnirCapasVectoriales']['OUTPUT'],
+            'NEW_FIELD': True,
+            'OUTPUT': 'memory:'
+        }
+        outputs['Direccio'] = processing.run('qgis:fieldcalculator', alg_params)
+
+        if (self.dlg.chk_CostNusos.isChecked()):
+            # CREACIO_L_TRAM_TEMP
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'L_TRAM_TEMP',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '$length',
+                'INPUT': outputs['Direccio']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Direccio'] = processing.run('qgis:fieldcalculator', alg_params)        
+        return outputs['Direccio']['OUTPUT']
+                
+        #print (outputs)
+    
+    def calcul_graf3(self,sql_punts,sql_xarxa,uri2):
+        #               *****************************************************************************************************************
+        #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
+        #               *****************************************************************************************************************
+        #                uri.setDataSource("","("+sql_total+")","geom","","id")
+        global Fitxer
+        QApplication.processEvents()
+        uri2.setDataSource("","("+sql_punts+")","geom","","id")
+        QApplication.processEvents()
+        punts_lyr = QgsVectorLayer(uri2.uri(False), "punts", "postgres")
+        QApplication.processEvents()
+        uri2.setDataSource("","("+sql_xarxa+")","the_geom","","id")
+        QApplication.processEvents()
+        network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
+        QApplication.processEvents()
+        #if (punts_lyr.isValid() and network_lyr.isValid()):
+        #************************************************************************************
+        #************************************************************************************
+        p_lyr = punts_lyr
+        graf = network_lyr
+        epsg = p_lyr.crs().postgisSrid()
+
+        l_lyr=self.Calcula_VEL_KMH(graf,epsg,uri2)
+        
+        #QgsProject.instance().addMapLayer(l_lyr)
+        
+        
+        lines_features = [ line_feature for line_feature in l_lyr.getFeatures() ] 
+        points_features = [ point_feature for point_feature in p_lyr.getFeatures() ]
+        vl = QgsVectorLayer("LineString?crs=epsg:" + str(epsg), "Lineas2", "memory")
+        pr = vl.dataProvider()
+        lista=[]
+        for field in lines_features[0].fields():
+            lista.append(field)
+        
+        #print (lista)
+        pr.addAttributes(lista)
+            
+        vl.updateFields()
+        feats = []
+        puntos=[]
+        idx_lines=[]
+        punts_id=[]
+        Trams0_id=[]
+        Trams1_id=[]
+        Trams_id=[]
+        repetits=[]
+        for p in points_features:
+            lineas=[]
+            for l in lines_features:
+                lineas.append([l.geometry().closestSegmentWithContext( p.geometry().asPoint() )])
+            punts_id.append(min(lineas)[0][1])
+            Trams0_id.append(lineas.index(sorted(lineas)[0])+1)
+            Trams1_id.append(lineas.index(sorted(lineas)[1])+1)
+        Trams_id.append([0,Trams0_id])
+        Trams_id.append([1,Trams1_id])
+        #print(Trams0_id)
+        #print(Trams1_id)
+        #print(Trams_id)
+        #print(Trams_id[0][1])
+        #print(Trams_id[1][1])
+        
+        repetits.append([x for x, y in collections.Counter(Trams_id[0][1]).items() if y > 1])
+        repetits.append([x for x, y in collections.Counter(Trams_id[1][1]).items() if y > 1])
+        #print(repetits)
+        
+        trams_fets=[]
+        feat_temp = QgsFeature()
+        for index_punt,p in enumerate(points_features):
+            #print(index_punt)
+            #print (repetits)
+            for i in range(2):
+                linea_cut=lines_features[Trams_id[i][1][index_punt]-1]
+                if ([linea_cut.id()]) not in repetits:
+                    idx_lines.append(linea_cut.id())
+        
+                    start=0
+                    distancia=round(self.troba_distancia(linea_cut,p),3)
+                    longitud=round(linea_cut.geometry().length(),3)
+                    lp=linea_cut.geometry().constGet()
+                    newgeom=QgsGeometry(lp.curveSubstring(start,distancia))
+                    #print(newgeom)
+                    f=QgsFeature()
+                    f.setAttributes(linea_cut.attributes())
+                    f.setGeometry(newgeom)
+                    feats.append(f)
+        
+                    newgeom=QgsGeometry(lp.curveSubstring(distancia,longitud))
+                    #print(newgeom)
+                    f=QgsFeature()
+                    f.setAttributes(linea_cut.attributes())
+                    f.setGeometry(newgeom)
+                    feats.append(f)
+                else:
+                    #print("REPE")
+                    #break
+                    id_tram_Read=linea_cut.id()
+                    if id_tram_Read not in trams_fets:
+                        trams_fets.append(id_tram_Read)
+        
+                        idx_lines.append(id_tram_Read)
+                        posicio=self.troba_posicio(linea_cut.id(),Trams_id[i][1])
+                        llista_dist=self.calcula_distancies(linea_cut,posicio,points_features)
+                        #En llista_dist estan ordenat de menor distancia a major distancia
+                        
+                        #break
+                        start=0
+                        #distancia=troba_distancia(linea_cut,p)
+                        longitud=round(linea_cut.geometry().length(),3)
+                        #print (longitud)
+                        lp=linea_cut.geometry().constGet()
+                        for x in range(len(posicio)):
+                            if x==0:
+                                start=0
+                            else:
+                                start=round(llista_dist[x-1][1],3)
+                            
+                            distancia=round(llista_dist[x][1],3)
+        
+                            newgeom=QgsGeometry(lp.curveSubstring(start,distancia))
+                            f=QgsFeature()
+                            f.setAttributes(linea_cut.attributes())
+                            f.setGeometry(newgeom)
+                            feats.append(f)
+        
+                        newgeom=QgsGeometry(lp.curveSubstring(distancia,longitud))
+                        f=QgsFeature()
+                        f.setAttributes(linea_cut.attributes())
+                        f.setGeometry(newgeom)
+                        feats.append(f)
+                        
+                    #for x in range(Trams_id[i][1].count(lines_features[Trams_id[i][1][p.id()-1]-1].id())):
+                        
+            minDistPoint = punts_id[index_punt]
+            punto = QgsFeature()
+            punto.setGeometry(QgsGeometry.fromPointXY(minDistPoint))
+        
+            punto.setAttributes([points_features.index(p),123])
+            puntos.append(punto)
+            #print (trams_fets)
+        for current,feat_item in enumerate(lines_features):
+            if (current+1) not in idx_lines:
+                feats.append(feat_item)
+        pr.addFeatures(feats)
+        vl.updateExtents()
+        #QgsProject.instance().addMapLayer(vl)
+        outputs={}
+        
+        if (self.dlg.chk_CostNusos.isChecked()):
+
+            # AFEGIR COST DE SEMAFORS A VEL_KMH
+            print("entra")
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '($length /(($length/((\"VELOCITAT_PS\"+\"VELOCITAT_PS_INV\")))+(\"Cost_Total_Semafor_Tram\"*($length/\"L_TRAM_TEMP\"))))*60/1000',
+                'INPUT': vl,
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+                #'OUTPUT': 'postgres: table="public"."testpep" (geom) '+uri.connectionInfo()
+            }
+            outputs['vel_kmh_amb_sem'] = processing.run('qgis:fieldcalculator', alg_params)
+            layer=outputs['vel_kmh_amb_sem']['OUTPUT']
+        else:
+            layer=vl
+
+        # AreaServei
+        alg_params = {
+            'DEFAULT_DIRECTION': 0,
+            'DEFAULT_SPEED': 50,
+            'DIRECTION_FIELD': 'DIRECCIO',
+            'INCLUDE_BOUNDS': False,
+            'INPUT':layer,
+            'SPEED_FIELD': 'VEL_KMH',
+            'START_POINTS': p_lyr,
+            'STRATEGY': 1,
+            'TOLERANCE': 0.1,
+            'TRAVEL_COST': str(int(self.dlg.TL_Dist_Cost.text())*60),
+            'VALUE_BACKWARD': '',
+            'VALUE_BOTH': '',
+            'VALUE_FORWARD': 'D',
+            'OUTPUT_LINES':'memory:'
+        }
+        outputs['Areaservei'] = processing.run('qgis:serviceareafromlayer', alg_params)
+#         parameters = {'INPUT': network_lyr,
+#                       'START_POINTS': punts_lyr,
+#                       'STRATEGY': 0,
+#                       'TRAVEL_COST':self.dlg.TL_Dist_Cost.text(),
+#                       'DIRECTION_FIELD': '',
+#                       'VALUE_FORWARD': '',
+#                       'VALUE_BACKWARD': '',
+#                       'VALUE_BOTH': '',
+#                       'DEFAULT_DIRECTION': 2,
+#                       'SPEED_FIELD': '',
+#                       'DEFAULT_SPEED': 1,
+#                       'TOLERANCE': 0,
+#                       'INCLUDE_BOUNDS': 0,
+#                       'OUTPUT_LINES': 'memory:',
+#                       'OUTPUT': 'memory:'}
+#         linias_graf = processing.run('qgis:serviceareafromlayer', parameters)
+        
+        #************************************************************************************
+        #************************************************************************************
+        #result_buffer = processing.run('native:buffer', {"INPUT": network_lyr,
+        # native:dissolve
+        result_dissolve = processing.run('native:dissolve', {"INPUT": outputs['Areaservei']['OUTPUT_LINES'],
+                                                             "FIELD": 'id',
+                                                             "OUTPUT": 'memory:'})        
+
+        result_singleparts = processing.run('native:multiparttosingleparts', {"INPUT": outputs['Areaservei']['OUTPUT_LINES'],
+                                                                              "OUTPUT": 'memory:'})
+        result_buffer = processing.run('native:buffer', {"INPUT": result_singleparts['OUTPUT'],
+                                                         "DISTANCE": 20,
+                                                         "SEGMENTS": 5,
+                                                         "END_CAP_STYLE":0,
+                                                         "JOIN_STYLE":0,
+                                                         "MITER_LIMIT":1,
+                                                         "DISSOLVE":0,
+                                                         "OUTPUT": 'memory:'})
+                                                         #"OUTPUT": 'postgres: table="public"."testpep" (geom) '+uri2.connectionInfo()})
+        
+        result_buffer_dissolve = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
+                                                                    "FIELD": 'id',
+                                                                    "OUTPUT": 'memory:'})
+        
+        buffer_dissolved = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
+                                                             "OUTPUT": 'memory:'})        
+        
+        return result_buffer_dissolve,result_dissolve,buffer_dissolved
+    
     
     def on_click_cbDibuix(self,state):
         """Aquesta funció controla l'aparen�a del checkBox que controla l'apartat de Dibuix"""
@@ -2128,7 +2568,7 @@ class ZI_GTC:
             self.dlg.RB_campFix.setText('Temps (minuts):')
             self.dlg.RB_campTaula.setText('Camp del temps:')
             self.dlg.TL_Dist_Cost.setText("2")
-            self.dlg.chk_calc_local.setVisible(False)
+            self.dlg.chk_calc_local.setVisible(True)
     
     def estatInicial(self):
         """Aquesta funci� posa tots els elements de la interficie en el seu estat inicial."""
@@ -2164,7 +2604,7 @@ class ZI_GTC:
         self.dlg.gb_poblacio.setVisible(False)
         self.dlg.RB_campTaula.setText('Camp de la distància:')
         self.dlg.chk_CostNusos.setChecked(False)
-        self.dlg.chk_CostInvers.setChecked(False)
+        self.dlg.chk_CostInvers.setChecked(True)
         self.dlg.chk_poblacio.setChecked(False)
         self.dlg.comboMetodeTreball.setCurrentIndex(0)
         self.dlg.comboTras.setCurrentIndex(0)
