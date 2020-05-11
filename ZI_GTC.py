@@ -49,6 +49,7 @@ from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsFeature
 from qgis.core import QgsGeometry
 from qgis.utils import iface
+import qgis.utils
 #from PyQt5.QtGui import QProgressBar
 from qgis.core import QgsProcessingFeedback, Qgis,QgsCoordinateReferenceSystem,QgsVectorLayerExporter
 from qgis.gui import QgsMessageBar
@@ -87,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.200508"
+Versio_modul="V_Q3.200511"
 geometria=""
 
 
@@ -1709,12 +1710,14 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        save_options = QgsVectorFileWriter.SaveVectorOptions()
-                        save_options.driverName = "ESRI Shapefile"
-                        save_options.fileEncoding = "UTF-8"
-                        transform_context = QgsProject.instance().transformContext()
-                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
-                        #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                        if (qgis.utils.Qgis.QGIS_VERSION_INT>=31000):
+                            save_options = QgsVectorFileWriter.SaveVectorOptions()
+                            save_options.driverName = "ESRI Shapefile"
+                            save_options.fileEncoding = "UTF-8"
+                            transform_context = QgsProject.instance().transformContext()
+                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                        else:
+                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
                         vlayer = QgsVectorLayer(os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
@@ -1797,12 +1800,14 @@ class ZI_GTC:
                         if vlayer.isValid():
                             Tematic=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                             """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                            save_options = QgsVectorFileWriter.SaveVectorOptions()
-                            save_options.driverName = "ESRI Shapefile"
-                            save_options.fileEncoding = "UTF-8"
-                            transform_context = QgsProject.instance().transformContext()
-                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp",transform_context,save_options)
-                            #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            if (qgis.utils.Qgis.QGIS_VERSION_INT>=31000):
+                                save_options = QgsVectorFileWriter.SaveVectorOptions()
+                                save_options.driverName = "ESRI Shapefile"
+                                save_options.fileEncoding = "UTF-8"
+                                transform_context = QgsProject.instance().transformContext()
+                                error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp",transform_context,save_options)
+                            else:
+                                error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                             """Es carrega el Shape a l'entorn del QGIS"""
                             vlayer = QgsVectorLayer(os.environ['TMP']+"/Tematic_"+Tematic+".shp", titol3.decode('utf8'), "ogr")
                             vlayer.setProviderEncoding(u'UTF-8')
@@ -1863,12 +1868,14 @@ class ZI_GTC:
                 if vlayer.isValid():
                     Area=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                     """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                    save_options = QgsVectorFileWriter.SaveVectorOptions()
-                    save_options.driverName = "ESRI Shapefile"
-                    save_options.fileEncoding = "UTF-8"
-                    transform_context = QgsProject.instance().transformContext()
-                    error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", transform_context,save_options)
-                    #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                    if (qgis.utils.Qgis.QGIS_VERSION_INT>=31000):
+                        save_options = QgsVectorFileWriter.SaveVectorOptions()
+                        save_options.driverName = "ESRI Shapefile"
+                        save_options.fileEncoding = "UTF-8"
+                        transform_context = QgsProject.instance().transformContext()
+                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", transform_context,save_options)
+                    else:
+                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                     vlayer=None
                     """Es carrega el Shape a l'entorn del QGIS"""
                     vlayer = QgsVectorLayer(os.environ['TMP']+"/Area_"+Area+".shp", titol3.decode('utf8'), "ogr")
@@ -1913,12 +1920,14 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        save_options = QgsVectorFileWriter.SaveVectorOptions()
-                        save_options.driverName = "ESRI Shapefile"
-                        save_options.fileEncoding = "UTF-8"
-                        transform_context = QgsProject.instance().transformContext()
-                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp",transform_context,save_options)
-                        #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                        if (qgis.utils.Qgis.QGIS_VERSION_INT>=31000):
+                            save_options = QgsVectorFileWriter.SaveVectorOptions()
+                            save_options.driverName = "ESRI Shapefile"
+                            save_options.fileEncoding = "UTF-8"
+                            transform_context = QgsProject.instance().transformContext()
+                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp",transform_context,save_options)
+                        else:
+                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
                         vlayer = QgsVectorLayer(os.environ['TMP']+"/Graf_"+Graf+".shp", titol3.decode('utf8'), "ogr")
                         vlayer.setProviderEncoding(u'UTF-8')
