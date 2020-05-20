@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.200511"
+Versio_modul="V_Q3.200519"
 geometria=""
 
 
@@ -2272,9 +2272,21 @@ class ZI_GTC:
         #if (punts_lyr.isValid() and network_lyr.isValid()):
         #************************************************************************************
         #************************************************************************************
-        p_lyr = punts_lyr
+        outputs = {}
+        epsg = network_lyr.crs().postgisSrid()
+        
+        alg_params = {
+            'INPUT': punts_lyr,
+            'OPERATION': '',
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:'+str(epsg)),
+            'OUTPUT': 'memory:'
+        }
+        outputs['ReproyectarCapa'] = processing.run('native:reprojectlayer', alg_params)
+        
+        #p_lyr = punts_lyr 
+        p_lyr = outputs['ReproyectarCapa']['OUTPUT']
         graf = network_lyr
-        epsg = p_lyr.crs().postgisSrid()
+        
 
         l_lyr=self.Calcula_VEL_KMH(graf,epsg,uri2)
         
@@ -2400,7 +2412,7 @@ class ZI_GTC:
         pr.addFeatures(feats)
         vl.updateExtents()
         #QgsProject.instance().addMapLayer(vl)
-        outputs={}
+        #outputs={}
         
         if (self.dlg.chk_CostNusos.isChecked()):
 
