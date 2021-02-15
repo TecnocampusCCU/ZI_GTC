@@ -90,7 +90,7 @@ conn=None
 progress=None
 Versio_modul="V_Q3.200519"
 geometria=""
-
+TEMPORARY_PATH=""
 
 class ZI_GTC:
     """QGIS Plugin Implementation."""
@@ -1223,6 +1223,7 @@ class ZI_GTC:
         global schema
         global progress
         global geometria
+        global TEMPORARY_PATH
         
         self.dlg.setEnabled(False)
         
@@ -1715,11 +1716,11 @@ class ZI_GTC:
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
                             transform_context = QgsProject.instance().transformContext()
-                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
                         else:
-                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
-                        vlayer = QgsVectorLayer(os.environ['TMP']+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
+                        vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
                         symbol.setColor(self.dlg.color.palette().color(1))
@@ -1805,11 +1806,11 @@ class ZI_GTC:
                                 save_options.driverName = "ESRI Shapefile"
                                 save_options.fileEncoding = "UTF-8"
                                 transform_context = QgsProject.instance().transformContext()
-                                error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp",transform_context,save_options)
+                                error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, TEMPORARY_PATH+"/Tematic_"+Tematic+".shp",transform_context,save_options)
                             else:
-                                error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                                error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Tematic_"+Tematic+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                             """Es carrega el Shape a l'entorn del QGIS"""
-                            vlayer = QgsVectorLayer(os.environ['TMP']+"/Tematic_"+Tematic+".shp", titol3.decode('utf8'), "ogr")
+                            vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Tematic_"+Tematic+".shp", titol3.decode('utf8'), "ogr")
                             vlayer.setProviderEncoding(u'UTF-8')
                             vlayer.dataProvider().setEncoding(u'UTF-8')
                             '''
@@ -1873,12 +1874,12 @@ class ZI_GTC:
                         save_options.driverName = "ESRI Shapefile"
                         save_options.fileEncoding = "UTF-8"
                         transform_context = QgsProject.instance().transformContext()
-                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", transform_context,save_options)
+                        error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, TEMPORARY_PATH+"/Area_"+Area+".shp", transform_context,save_options)
                     else:
-                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                        error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Area_"+Area+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                     vlayer=None
                     """Es carrega el Shape a l'entorn del QGIS"""
-                    vlayer = QgsVectorLayer(os.environ['TMP']+"/Area_"+Area+".shp", titol3.decode('utf8'), "ogr")
+                    vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Area_"+Area+".shp", titol3.decode('utf8'), "ogr")
                     vlayer.setProviderEncoding(u'UTF-8')
                     vlayer.dataProvider().setEncoding(u'UTF-8')
                     symbols = vlayer.renderer().symbols(QgsRenderContext())
@@ -1925,11 +1926,11 @@ class ZI_GTC:
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
                             transform_context = QgsProject.instance().transformContext()
-                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp",transform_context,save_options)
+                            error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, TEMPORARY_PATH+"/Graf_"+Graf+".shp",transform_context,save_options)
                         else:
-                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, os.environ['TMP']+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Graf_"+Graf+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
                         """Es carrega el Shape a l'entorn del QGIS"""
-                        vlayer = QgsVectorLayer(os.environ['TMP']+"/Graf_"+Graf+".shp", titol3.decode('utf8'), "ogr")
+                        vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Graf_"+Graf+".shp", titol3.decode('utf8'), "ogr")
                         vlayer.setProviderEncoding(u'UTF-8')
                         vlayer.dataProvider().setEncoding(u'UTF-8')
                         #cur.execute("DROP TABLE IF EXISTS Graf_utilitzat_"+Fitxer)
@@ -2596,6 +2597,7 @@ class ZI_GTC:
         global micolor
         global micolorArea
         global Versio_modul
+        global TEMPORARY_PATH
         self.dlg.versio.setText(Versio_modul)
         micolor = QColor(255,0,0,255)
         micolorArea = QColor(0,255,255,255)
@@ -2645,6 +2647,10 @@ class ZI_GTC:
         QApplication.processEvents()
         self.dlg.setEnabled(True)
         
+        if (os.name=='nt'):
+            TEMPORARY_PATH=os.environ['TMP']
+        else:
+            TEMPORARY_PATH=os.environ['TMPDIR']
        
     def on_Change_ComboConn(self):
         """
