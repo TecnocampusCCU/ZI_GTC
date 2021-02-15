@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.200519"
+Versio_modul="V_Q3.210215"
 geometria=""
 TEMPORARY_PATH=""
 
