@@ -1288,10 +1288,10 @@ class ZI_GTC:
             a=time.time()
             while trobat:
                 if (path != ''):
-                    if (os.path.exists(path + "\\tr_illes.csv")):
+                    if (os.path.exists(path + "/tr_illes.csv")):
                         trobat = False 
                         
-                        arxiu = open(path + "\\tr_illes.csv", 'r')
+                        arxiu = open(path + "/tr_illes.csv", 'r')
                         dummy=arxiu.readline()
                         lines = arxiu.readlines()
                         try:
@@ -1325,7 +1325,7 @@ class ZI_GTC:
                         arxiuLlegit = True
                     else:
                         print ("No hi ha l'arxiu")
-                        path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
+                        path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"/",QFileDialog.ShowDirsOnly)
                 else:
                     print ("Cancelat")
                     self.bar.setEnabled(True)
@@ -1341,10 +1341,10 @@ class ZI_GTC:
                 
                 if (self.dlg.bt_Parcel.isChecked()):
                     if (path != ''):
-                        if (os.path.exists(path + "\\tr_parceles.csv")):
+                        if (os.path.exists(path + "/tr_parceles.csv")):
                             trobat = False 
                             
-                            arxiu = open(path + "\\tr_parceles.csv", 'r')
+                            arxiu = open(path + "/tr_parceles.csv", 'r')
                             dummy=arxiu.readline()
                             lines = arxiu.readlines()
                             try:
@@ -1380,7 +1380,7 @@ class ZI_GTC:
                             arxiuLlegit = True
                         else:
                             print ("No hi ha l'arxiu")
-                            path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
+                            path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"/",QFileDialog.ShowDirsOnly)
                     else:
                         print ("Cancelat")
                         self.bar.setEnabled(True)
@@ -1396,10 +1396,10 @@ class ZI_GTC:
                 if (self.dlg.bt_Portals.isChecked()):
                     self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: rgb(255, 170, 142)')
                     if (path != ''):
-                        if (os.path.exists(path + "\\tr_npolicia.csv")):
+                        if (os.path.exists(path + "/tr_npolicia.csv")):
                             trobat = False 
                             
-                            arxiu = open(path + "\\tr_npolicia.csv", 'r')
+                            arxiu = open(path + "/tr_npolicia.csv", 'r')
                             dummy=arxiu.readline()
                             lines = arxiu.readlines()
                             try:
@@ -1434,7 +1434,7 @@ class ZI_GTC:
                             arxiuLlegit = True
                         else:
                             print ("No hi ha l'arxiu")
-                            path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"\\",QFileDialog.ShowDirsOnly)
+                            path = QFileDialog.getExistingDirectory(self.dlg,"Busca la carpeta que conté els arxius provinents del mòdul TAULA RESUM",  Path_Inicial+"/",QFileDialog.ShowDirsOnly)
                     else:
                         print ("Cancelat")
                         self.bar.setEnabled(True)
