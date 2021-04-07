@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.210215"
+Versio_modul="V_Q3.210407"
 geometria=""
 TEMPORARY_PATH=""
 
@@ -2446,7 +2446,7 @@ class ZI_GTC:
             'START_POINTS': p_lyr,
             'STRATEGY': 1,
             'TOLERANCE': 0.1,
-            'TRAVEL_COST': str(int(self.dlg.TL_Dist_Cost.text())*60),
+            'TRAVEL_COST': str(float(self.dlg.TL_Dist_Cost.text())*60),
             'VALUE_BACKWARD': '',
             'VALUE_BOTH': '',
             'VALUE_FORWARD': 'D',
