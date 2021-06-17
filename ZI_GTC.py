@@ -1711,7 +1711,7 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        if (qgis.utils.Qgis.QGIS_VERSION_INT>31000):
+                        if (qgis.utils.Qgis.QGIS_VERSION_INT > 31000 and qgis.utils.Qgis.QGIS_VERSION_INT != 31002):
                             save_options = QgsVectorFileWriter.SaveVectorOptions()
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
@@ -1801,7 +1801,7 @@ class ZI_GTC:
                         if vlayer.isValid():
                             Tematic=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                             """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                            if (qgis.utils.Qgis.QGIS_VERSION_INT>31000):
+                            if (qgis.utils.Qgis.QGIS_VERSION_INT > 31000 and qgis.utils.Qgis.QGIS_VERSION_INT != 31002):
                                 save_options = QgsVectorFileWriter.SaveVectorOptions()
                                 save_options.driverName = "ESRI Shapefile"
                                 save_options.fileEncoding = "UTF-8"
@@ -1869,7 +1869,7 @@ class ZI_GTC:
                 if vlayer.isValid():
                     Area=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                     """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                    if (qgis.utils.Qgis.QGIS_VERSION_INT>31000):
+                    if (qgis.utils.Qgis.QGIS_VERSION_INT > 31000 and qgis.utils.Qgis.QGIS_VERSION_INT != 31002):
                         save_options = QgsVectorFileWriter.SaveVectorOptions()
                         save_options.driverName = "ESRI Shapefile"
                         save_options.fileEncoding = "UTF-8"
@@ -1921,7 +1921,7 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        if (qgis.utils.Qgis.QGIS_VERSION_INT>31000):
+                        if (qgis.utils.Qgis.QGIS_VERSION_INT > 31000 and qgis.utils.Qgis.QGIS_VERSION_INT != 31002):
                             save_options = QgsVectorFileWriter.SaveVectorOptions()
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
