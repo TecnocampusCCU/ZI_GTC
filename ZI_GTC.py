@@ -68,7 +68,7 @@ from .ZI_GTC_dialog import ZI_GTCDialog
 import psycopg2
 from email.header import UTF8
 import os.path
-from macpath import curdir
+#from macpath import curdir
 import collections
 """
 Variables globals per a la connexio
@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.210617"
+Versio_modul="V_Q3.210707"
 geometria=""
 TEMPORARY_PATH=""
 
