@@ -88,9 +88,10 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.210707"
+Versio_modul="V_Q3.220630"
 geometria=""
 TEMPORARY_PATH=""
+tipus_entitat_punt=False
 
 class ZI_GTC:
     """QGIS Plugin Implementation."""
@@ -129,6 +130,7 @@ class ZI_GTC:
         self.dlg.bt_OK.clicked.connect(self.on_click_OK)
         self.dlg.comboMetodeTreball.currentIndexChanged.connect(self.changeComboMetodeTreball)
         self.dlg.color.clicked.connect(self.on_click_Color)
+        self.dlg.color_2.clicked.connect(self.on_click_ColorArea)
         self.dlg.colorArea.clicked.connect(self.on_click_ColorArea)
         self.dlg.checkBoxDibuix.stateChanged.connect(self.on_click_cbDibuix)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
@@ -140,10 +142,12 @@ class ZI_GTC:
         self.dlg.chk_poblacio.stateChanged.connect(self.on_click_CB_poblacio)
         self.dlg.RB_campFix.toggled.connect(self.on_click_campFix)
         self.dlg.RB_campTaula.toggled.connect(self.on_click_campTaula)
+        self.dlg.RB_Graf.toggled.connect(self.on_click_Graf)
+        self.dlg.RB_RadiCirc.toggled.connect(self.on_click_RadiCirc)
         self.dlg.comboLeyenda.currentIndexChanged.connect(self.on_Change_ComboLeyenda)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
         self.dlg.bt_ReloadLeyenda.clicked.connect(self.cerca_elements_Leyenda)
-        
+        self.dlg.tabWidget_Destino.currentChanged.connect(self.on_Change_TabWidget)
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr('&CCU')
@@ -265,7 +269,7 @@ class ZI_GTC:
         icon_path = ':/plugins/ZI_GTC/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr('ZI-GTC'),
+            text=self.tr('ZI-POB'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -281,6 +285,22 @@ class ZI_GTC:
         # remove the toolbar
         #del self.toolbar
 
+    def on_click_Graf(self,enabled):
+        global tipus_entitat_punt
+        tipus_entitat_punt=True
+        self.dlg.groupBox_2.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_3.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_6.setVisible(not(tipus_entitat_punt))
+           
+    def on_click_RadiCirc(self,enabled):
+        global tipus_entitat_punt
+        tipus_entitat_punt=False
+        self.dlg.groupBox_2.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_3.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_6.setVisible(not(tipus_entitat_punt))
+            
 
     def on_click_campTaula(self,enabled):
         """Aquesta funci� activa o desactiva el camp de la taula"""
@@ -308,6 +328,7 @@ class ZI_GTC:
         
     def controlErrors(self):
         """Aquesta funci� controla que tots els camps siguin correctes abans de fer el c�lcul"""
+        global tipus_entitat_punt
         errors = []
         capa = None
         if self.dlg.comboConnexio.currentText() == 'Selecciona connexió':
@@ -328,8 +349,9 @@ class ZI_GTC:
             else:
                 capa = self.dlg.comboLeyenda.currentText()
 
-        if self.dlg.comboGraf.currentText() == 'Selecciona una entitat':
-            errors.append('No hi ha seleccionada cap capa de xarxa seleccionada')
+        if (self.dlg.comboGraf.currentText() == 'Selecciona una entitat' and tipus_entitat_punt):
+            errors.append('No hi ha cap capa de xarxa seleccionada')
+            #print(tipus_entitat_punt)
         if self.dlg.RB_campTaula.isChecked():
             if self.dlg.comboCapaPunts.currentText() == 'Selecciona un camp' or self.dlg.comboCapaPunts.currentText() == '':
                 errors.append('No hi ha seleccionada cap camp seleccionat')
@@ -357,8 +379,8 @@ class ZI_GTC:
                 errorsCapa = self.controlEntitatSelPunts(capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.    
             else:
                 errorsCapa = self.controlEntitatLeyenda(capa)
-    
-            if len(errorsCapa) < 2:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
+            print(errorsCapa)
+            if len(errorsCapa) < 1:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
                 errors.append('La capa de destí no és vàlida')
         
         return errors
@@ -1224,7 +1246,8 @@ class ZI_GTC:
         global progress
         global geometria
         global TEMPORARY_PATH
-        
+        global tipus_entitat_punt
+
         self.dlg.setEnabled(False)
         
         
@@ -1543,27 +1566,28 @@ class ZI_GTC:
                                 return
                             auxlist = cur.fetchall()
                             Valor_SRID=auxlist[0][0]
-                            alter = 'ALTER TABLE "LayerExportat'+Fitxer+'" ALTER COLUMN geom TYPE geometry(Point,'+str(Valor_SRID)+') USING ST_GeometryN(geom,1);'
+                            if tipus_entitat_punt:
+                                alter = 'ALTER TABLE "LayerExportat'+Fitxer+'" ALTER COLUMN geom TYPE geometry(Point,'+str(Valor_SRID)+') USING ST_GeometryN(geom,1);'
                             
-                            try:
-                                cur.execute(alter)
-                                conn.commit()
-                            except Exception as ex:
-                                print ("ALTER TABLE ERROR_geometry")
-                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                                message = template.format(type(ex).__name__, ex.args)
-                                print (message)
-                                QMessageBox.information(None, "Error", "ALTER TABLE ERROR_geometry")
-                                conn.rollback()
-                                self.eliminaTaulesCalcul(Fitxer)
-                    
-                                self.bar.clearWidgets()
-                                self.dlg.Progres.setValue(0)
-                                self.dlg.Progres.setVisible(False)
-                                self.dlg.lblEstatConn.setText('Connectat')
-                                self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
-                                self.dlg.setEnabled(True)
-                                return
+                                try:
+                                    cur.execute(alter)
+                                    conn.commit()
+                                except Exception as ex:
+                                    print ("ALTER TABLE ERROR_geometry")
+                                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                    message = template.format(type(ex).__name__, ex.args)
+                                    print (message)
+                                    QMessageBox.information(None, "Error", "ALTER TABLE ERROR_geometry")
+                                    conn.rollback()
+                                    self.eliminaTaulesCalcul(Fitxer)
+                        
+                                    self.bar.clearWidgets()
+                                    self.dlg.Progres.setValue(0)
+                                    self.dlg.Progres.setVisible(False)
+                                    self.dlg.lblEstatConn.setText('Connectat')
+                                    self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+                                    self.dlg.setEnabled(True)
+                                    return
                                 
                                 
                                 
@@ -1637,43 +1661,73 @@ class ZI_GTC:
 #               *****************************************************************************************************************
 #               INICI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
 #               *****************************************************************************************************************
-                XarxaCarrers = self.dlg.comboGraf.currentText()
-                if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
-                    sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
-                    buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
-                    vlayer=buffer_resultat['OUTPUT']
-                    vlayer_graf=graf_resultat['OUTPUT']
-                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
-                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                    if error[0] != 0:
-                        iface.messageBar().pushMessage(u'Error', error[1])
+                if (tipus_entitat_punt==True):
+                    XarxaCarrers = self.dlg.comboGraf.currentText()
+                    if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                        sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
+                        buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
+                        vlayer=buffer_resultat['OUTPUT']
+                        vlayer_graf=graf_resultat['OUTPUT']
+                        sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        if error[0] != 0:
+                            iface.messageBar().pushMessage(u'Error', error[1])
 
-                elif (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Temps"):
-                    sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
-                    buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf3(sql_total,sql_xarxa,uri)
-                    vlayer=buffer_resultat['OUTPUT']
-                    vlayer_graf=graf_resultat['OUTPUT']
+                    elif (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Temps"):
+                        sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
+                        buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf3(sql_total,sql_xarxa,uri)
+                        vlayer=buffer_resultat['OUTPUT']
+                        vlayer_graf=graf_resultat['OUTPUT']
 
-                    #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
-                    # layer - QGIS vector layer
-                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                    if error[0] != 0:
-                        iface.messageBar().pushMessage(u'Error', error[1])
-                        
-                    #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                    #if error[0] != 0:
-                    #    iface.messageBar().pushMessage(u'Error', error[1])
-                        
-                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                        #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
+                        # layer - QGIS vector layer
+                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        if error[0] != 0:
+                            iface.messageBar().pushMessage(u'Error', error[1])
+                            
+                        #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        #if error[0] != 0:
+                        #    iface.messageBar().pushMessage(u'Error', error[1])
+                            
+                        sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                    else:
+                        sql_buffer=self.calcul_graf(sql_total)
+                        if sql_buffer=="ERROR":
+                            self.dlg.setEnabled(True)
+                            return
                 else:
-                    sql_buffer=self.calcul_graf(sql_total)
-                    if sql_buffer=="ERROR":
-                        self.dlg.setEnabled(True)
-                        return
+                    QApplication.processEvents()
+                    uri.setDataSource("","("+sql_total+")","geom","","id")
+                    QApplication.processEvents()
+                    punts_lyr = QgsVectorLayer(uri.uri(False), "punts", "postgres")
+                    QApplication.processEvents()
+                    result_buffer = processing.run('native:buffer', {"INPUT": punts_lyr,
+                                                                        "DISTANCE": self.dlg.Radi.text(),
+                                                                        "SEGMENTS": 5,
+                                                                        "END_CAP_STYLE":0,
+                                                                        "JOIN_STYLE":0,
+                                                                        "MITER_LIMIT":1,
+                                                                        "DISSOLVE":True,
+                                                                        "OUTPUT": 'memory:'})
+                                                                        #"OUTPUT": 'postgres: table="public"."testpep" (geom) '+uri2.connectionInfo()})
+                    #result_buffer_dissolve = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
+                    #                                                            "FIELD": 'id',
+                    #                                                            "OUTPUT": 'memory:'})
+                    #buffer_dissolved = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
+                    #                                                        "OUTPUT": 'memory:'})
+                    vlayer=result_buffer['OUTPUT']
+                    #vlayer=punts_lyr
+                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                    if error[0] != 0:
+                        iface.messageBar().pushMessage(u'Error', error[1])
+                    pass
 #               *****************************************************************************************************************
 #               FI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
 #               ***(**************************************************************************************************************
                 #print (sql_buffer)
+                #print("!dd")
+                
                 progress.setValue(60)
                 self.dlg.Progres.setValue(60)
                 QApplication.processEvents()
@@ -2412,13 +2466,13 @@ class ZI_GTC:
                 feats.append(feat_item)
         pr.addFeatures(feats)
         vl.updateExtents()
-        #QgsProject.instance().addMapLayer(vl)
+        QgsProject.instance().addMapLayer(vl)
         #outputs={}
         
         if (self.dlg.chk_CostNusos.isChecked()):
 
             # AFEGIR COST DE SEMAFORS A VEL_KMH
-            print("entra")
+            #print("entra")
             alg_params = {
                 'FIELD_LENGTH': 10,
                 'FIELD_NAME': 'VEL_KMH',
@@ -2523,6 +2577,7 @@ class ZI_GTC:
         self.dlg.color.setStyleSheet(estilo)
         self.dlg.color.setAutoFillBackground(True)
         pep=self.dlg.color.palette().color(1)
+
         pass
     
     def on_click_ColorArea(self):
@@ -2535,6 +2590,11 @@ class ZI_GTC:
         self.dlg.colorArea.setStyleSheet(estilo)
         self.dlg.colorArea.setAutoFillBackground(True)
         pep=self.dlg.colorArea.palette().color(1)
+
+        self.dlg.color_2.setStyleSheet(estilo)
+        self.dlg.color_2.setAutoFillBackground(True)
+        pep=self.dlg.color_2.palette().color(1)
+
         pass
     
     def on_click_MarcarIlles(self, clicked):
@@ -2605,6 +2665,7 @@ class ZI_GTC:
         self.dlg.TL_radiZI.setText("20")
         self.dlg.colorArea.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.color.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
+        self.dlg.color_2.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
         self.dlg.lblNum.setText("")
         self.dlg.lblNum.setStyleSheet('border:1px solid #000000')
@@ -2644,6 +2705,7 @@ class ZI_GTC:
         self.dlg.comboCapaPunts.setEnabled(False)
         self.dlg.chk_calc_local.setChecked(True)
         self.dlg.chk_calc_local.setVisible(True)
+        self.dlg.setWindowIcon(QIcon(self.plugin_dir+'\icon.png'))
         QApplication.processEvents()
         self.dlg.setEnabled(True)
         
@@ -2698,7 +2760,8 @@ class ZI_GTC:
                 self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
                 self.dlg.lblEstatConn.setText('Connectat')
                 cur = conn.cursor()
-                sql = "select f_table_name from geometry_columns where type = 'POINT' and f_table_schema ='public' order by 1"
+                #sql = "select f_table_name from geometry_columns where type = 'POINT' and f_table_schema ='public' order by 1"
+                sql = "select f_table_name from geometry_columns where type in ('LINESTRING','MULTILINESTRING','POINT','MULTIPOINT','POLYGON','MULTIPOLYGON') and f_table_schema ='public' order by 1"
                 cur.execute(sql)
                 llista = cur.fetchall()
                 self.ompleCombos(self.dlg.comboSelPunts, llista, 'Selecciona una entitat', True)
@@ -2739,7 +2802,8 @@ class ZI_GTC:
                 for layer in layers:
                     #print(layer.type())
                     if layer.type()==QgsMapLayer.VectorLayer:
-                        if layer.wkbType()==QgsWkbTypes.Point:
+                        #aux.append(layer.name())
+                        if layer.wkbType() not in (QgsWkbTypes.NoGeometry,QgsWkbTypes.NullGeometry,QgsWkbTypes.Unknown,QgsWkbTypes.UnknownGeometry,QgsWkbTypes.GeometryCollectionM,QgsWkbTypes.GeometryCollectionZ,QgsWkbTypes.GeometryCollectionZM):
                             aux.append(layer.name())
                         
                 self.ompleCombos(self.dlg.comboLeyenda, aux, 'Selecciona una entitat', True)
@@ -2752,14 +2816,19 @@ class ZI_GTC:
                 QMessageBox.information(None, "Error", missatge)
                 return
             
-    
+    def on_Change_TabWidget(self,i):
+        #print(i)
+        self.dlg.comboLeyenda.setCurrentIndex(0) 
+        self.dlg.comboSelPunts.setCurrentIndex(0) 
+        tipus_entitat_punt=False
     def on_Change_ComboLeyenda(self):
+
         """
         En el moment en que es modifica la opcio escollida 
         del combo o desplegable de la capa de punts,
         automÃ ticament comprova els camps de la taula escollida.
         """
-        
+        global tipus_entitat_punt
         L_capa=self.dlg.comboLeyenda.currentText()  
              
         if L_capa == '' or L_capa == 'Selecciona una entitat':
@@ -2767,14 +2836,14 @@ class ZI_GTC:
         
         errors = self.controlEntitatLeyenda(L_capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.
 
-        if len(errors) < 2:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
+        if len(errors) < 1:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
             ErrorMessage = "La capa de destí seleccionada no es valida, necessita els camps (id, Nom). Li falten:\n"
             if "id" not in errors:
                 ErrorMessage+= '\n-"id"\n'
             #if "geom" not in errors:
             #    ErrorMessage+= '\n-"geom"\n'
-            if "Nom" not in errors:
-                ErrorMessage+= '\n-"Nom"\n'
+            #if "Nom" not in errors:
+            #    ErrorMessage+= '\n-"Nom"\n'
             #if "NPlaces" not in errors:
             #    ErrorMessage+= '\n-"NPlaces"\n'
             
@@ -2784,10 +2853,29 @@ class ZI_GTC:
     
         else:
             self.dlg.TB_titol.setText(L_capa)
+
+            layers = QgsProject.instance().mapLayers().values()
+            layer_selected=QgsProject.instance().mapLayersByName(L_capa)
+            if (layer_selected[0].wkbType()==QgsWkbTypes.Point):
+                tipus_entitat_punt=True
+                self.dlg.RB_Graf.setEnabled(True)
+                self.dlg.RB_Graf.setChecked(True)
+            else:
+                tipus_entitat_punt=False
+                self.dlg.RB_RadiCirc.setChecked(True)
+                self.dlg.RB_Graf.setEnabled(False)
             return True
     
     
-    
+    def tipus_entitat_escollida(self,entitat):
+        global conn
+        #conn = psycopg2.connect(estructura)
+        cur = conn.cursor()
+        sql = "select type from geometry_columns where f_table_name='"+entitat+"' and f_table_schema ='public' order by 1"
+        cur.execute(sql)
+        tipus = cur.fetchone()
+        return tipus[0]
+
     def controlEntitatLeyenda(self,entitat):
         '''
         Aquest metode mira si la entitat rebuda te els camps (id, geom, Nom) retorna una llista amb aquells camps que hi siguin.
@@ -2806,8 +2894,8 @@ class ZI_GTC:
                                 list.append("id")
                             #elif each.name() == "geom":
                             #    list.append("geom")
-                            elif each.name() == "Nom":
-                                list.append("Nom")
+                            #elif each.name() == "Nom":
+                            #    list.append("Nom")
         return list     
     
     
@@ -2824,16 +2912,18 @@ class ZI_GTC:
             #print(select)
             cur.execute(select)
             auxlist = cur.fetchall()
+
             for x in range (len(auxlist)):
+                #print(auxlist[x][0])
                 if(auxlist[x][0]=="id"):
                     if "id" not in list:
                         list.append("id")
                 #elif(auxlist[x][0]=="geom"):
                 #    if "geom" not in list:
                 #        list.append("geom")
-                elif(auxlist[x][0]=="Nom"):
-                    if "Nom" not in list:
-                        list.append("Nom")
+                #elif(auxlist[x][0]=="Nom"):
+                #    if "Nom" not in list:
+                #        list.append("Nom")
             del auxlist[:]
             
             return list
@@ -2852,7 +2942,7 @@ class ZI_GTC:
         del combo o desplegable de la capa de punts,
         automÃ ticament comprova els camps de la taula escollida.
         """
-        
+        global tipus_entitat_punt
         capa=self.dlg.comboSelPunts.currentText()  
              
         if capa == '' or capa == 'Selecciona una entitat':
@@ -2860,14 +2950,14 @@ class ZI_GTC:
             
         errors = self.controlEntitatSelPunts(capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.
 
-        if len(errors) < 2:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
+        if len(errors) < 1:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
             ErrorMessage = "La capa de destí seleccionada no es valida, necessita els camps (id, Nom). Li falten:\n"
             if "id" not in errors:
                 ErrorMessage+= '\n-"id"\n'
             #if "geom" not in errors:
             #    ErrorMessage+= '\n-"geom"\n'
-            if "Nom" not in errors:
-                ErrorMessage+= '\n-"Nom"\n'
+            #if "Nom" not in errors:
+            #    ErrorMessage+= '\n-"Nom"\n'
             #if "NPlaces" not in errors:
             #    ErrorMessage+= '\n-"NPlaces"\n'
             
@@ -2877,6 +2967,19 @@ class ZI_GTC:
     
         else:
             self.dlg.TB_titol.setText(capa)
+            tipus=self.tipus_entitat_escollida(capa)
+            if tipus in ('LINESTRING','MULTILINESTRING','POLYGON','MULTIPOLYGON'):
+                #self.dlg.comboGraf.setEnabled(False)
+                self.dlg.comboMetodeTreball.setCurrentIndex(0)
+                #self.dlg.comboMetodeTreball.setEnabled(False)
+                tipus_entitat_punt=False
+                self.dlg.RB_RadiCirc.setChecked(True)
+                self.dlg.RB_Graf.setEnabled(False)
+            else:
+                tipus_entitat_punt=True
+                self.dlg.RB_Graf.setEnabled(True)
+                self.dlg.RB_Graf.setChecked(True)
+
             return True
         '''
         capa=self.dlg.comboSelPunts.currentText()
