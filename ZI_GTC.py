@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.220630"
+Versio_modul="V_Q3.240319"
 geometria=""
 TEMPORARY_PATH=""
 tipus_entitat_punt=False
@@ -683,10 +683,10 @@ class ZI_GTC:
         sql_1+="CREATE local temporary TABLE fraccio_trams_raw (the_geom geometry, punt_id bigint,id_tram bigint,fraccio FLOAT,node bigint,fraccio_inicial FLOAT,cost_invers FLOAT,cost_directe FLOAT,target bigint,radi_inic FLOAT);\n"
         sql_1+="FOR r IN SELECT \"trams_finals_tmp\".* FROM \"trams_finals_tmp\" WHERE \"trams_finals_tmp\".\"id\" not in (select \"edge_id\" from \"punts_interes_tmp\")\n"
         sql_1+="LOOP\n"
-        sql_1+="insert into fraccio_trams_raw VALUES(ST_Line_Substring((r.\"the_geom\"),"
-        sql_1+="case when (select ST_Line_Locate_Point((r.\"the_geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then 0 else 1-r.\"fraccio\"\n"
+        sql_1+="insert into fraccio_trams_raw VALUES(ST_LineSubstring((r.\"the_geom\"),"
+        sql_1+="case when (select ST_LineLocatePoint((r.\"the_geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then 0 else 1-r.\"fraccio\"\n"
         sql_1+="END,\n"
-        sql_1+="case when (select ST_Line_Locate_Point((r.\"the_geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then r.\"fraccio\" else 1\n"
+        sql_1+="case when (select ST_LineLocatePoint((r.\"the_geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then r.\"fraccio\" else 1\n"
         sql_1+="END),r.\"id_punt\"*(-1),r.\"id\",0,r.\"node\",0,0,0,0);\n"
         sql_1+="RETURN NEXT r;\n"
         sql_1+="END LOOP;\n"
@@ -917,12 +917,12 @@ class ZI_GTC:
         """Es modifiquen els trams finals del trajecte segons el que falti per arribar al cost desitjat"""
         sql_1="update \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\"" 
         sql_1+="from"
-        sql_1+="(select distinct(ST_Line_Substring("
+        sql_1+="(select distinct(ST_LineSubstring("
         sql_1+="(m.\"the_geom\")"
         sql_1+=","
-        sql_1+="(case when (select ST_Line_Locate_Point((m.\"the_geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then 0 else 1-m.\"fraccio\" END)"
+        sql_1+="(case when (select ST_LineLocatePoint((m.\"the_geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then 0 else 1-m.\"fraccio\" END)"
         sql_1+=","
-        sql_1+="(case when (select ST_Line_Locate_Point((m.\"the_geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then m.\"fraccio\" else 1 END)"
+        sql_1+="(case when (select ST_LineLocatePoint((m.\"the_geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then m.\"fraccio\" else 1 END)"
         sql_1+="))  the_geom"
         sql_1+=","
         sql_1+="m.\"id_tram\""
@@ -1021,7 +1021,7 @@ class ZI_GTC:
                     return "ERROR"        
             
                 cost_tram="ST_Length(SXI.\"the_geom\")"
-                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from (select ST_Line_Substring((SXI.\"the_geom\"),"
+                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/"+cost_tram+"))>0 then (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/"+cost_tram+")) else 0 end)"
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/"+cost_tram+"))<1 then (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/"+cost_tram+")) else 1 end)"
@@ -1031,7 +1031,7 @@ class ZI_GTC:
             else:
                 """ Calcul amb distancia i radi fix"""
                 cost_tram="ST_Length(SXI.\"the_geom\")"
-                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from (select ST_Line_Substring((SXI.\"the_geom\"),"
+                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+"))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+")) else 0 end)"
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+"))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+")) else 1 end)"
@@ -1066,14 +1066,14 @@ class ZI_GTC:
                                     
                     return "ERROR"        
                 sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from "
-                sql_1+="(select ST_Union(TOT.the_geom) the_geom,TOT.\"punt_id\" from (select ST_Line_Substring((SXI.\"the_geom\"),"
+                sql_1+="(select ST_Union(TOT.the_geom) the_geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/(FT.\"cost_invers\")))>0 then (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/(FT.\"cost_invers\"))) else 0 end)"
                 sql_1+=","
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=") as the_geom, FT.\"punt_id\" "
                 sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
                 sql_1+="UNION "
-                sql_1+="select ST_Line_Substring((SXI.\"the_geom\"),"
+                sql_1+="select ST_LineSubstring((SXI.\"the_geom\"),"
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/(FT.\"cost_directe\")))<1 then (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/(FT.\"cost_directe\"))) else 1 end)"
@@ -1083,14 +1083,14 @@ class ZI_GTC:
             else:
                 """ Calcul amb temps i radi fix"""
                 sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from "
-                sql_1+="(select ST_Union(TOT.the_geom) the_geom,TOT.\"punt_id\" from (select ST_Line_Substring((SXI.\"the_geom\"),"
+                sql_1+="(select ST_Union(TOT.the_geom) the_geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_invers\")))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_invers\"))) else 0 end)"
                 sql_1+=","
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=") as the_geom, FT.\"punt_id\" "
                 sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
                 sql_1+="UNION "
-                sql_1+="select ST_Line_Substring((SXI.\"the_geom\"),"
+                sql_1+="select ST_LineSubstring((SXI.\"the_geom\"),"
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_directe\")))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_directe\"))) else 1 end)"
@@ -1635,7 +1635,7 @@ class ZI_GTC:
                                 template = "An exception of type {0} occurred. Arguments:\n{1!r}"
                                 message = template.format(type(ex).__name__, ex.args)
                                 print (message)
-                                QMessageBox.information(None, "Error", errorMessage)
+                                QMessageBox.information(None, "Error", ErrorMessage)
                                 conn.rollback()
                                 self.eliminaTaulesCalcul(Fitxer)
                     
@@ -1741,7 +1741,7 @@ class ZI_GTC:
                         sql_total="select distinct(ILLES_RESUM.\"id\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
                     if (self.dlg.bt_Parcel.isChecked()):
                         """Si s'ha seleccionat PARCELES"""
-                        sql_total="select distinct(PARCELES_RESUM.\"id\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"UTM\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        sql_total="select distinct(PARCELES_RESUM.\"id\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"utm_total\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
                         
                     if (self.dlg.bt_Portals.isChecked()):
                         """Si s'ha seleccionat PORTALS"""
@@ -3060,7 +3060,7 @@ class ZI_GTC:
         predefInList = None
         for elem in list:
             try:
-                item = QStandardItem(unicode(elem))
+                item = QStandardItem(str(elem))
             except TypeError:
                 item = QStandardItem(str(elem))
             model.appendRow(item)
@@ -3086,7 +3086,7 @@ class ZI_GTC:
         for elem in llista:
             try:
                 if isinstance(elem, tuple):
-                    item = QStandardItem(unicode(elem[0]))
+                    item = QStandardItem(str(elem[0]))
                 else:
                     item = QStandardItem(str(elem))
             except TypeError:
