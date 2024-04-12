@@ -88,10 +88,11 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.240319"
+Versio_modul="V_Q3.240412"
 geometria=""
 TEMPORARY_PATH=""
 tipus_entitat_punt=False
+versio_db = ""
 
 class ZI_GTC:
     """QGIS Plugin Implementation."""
@@ -398,13 +399,14 @@ class ZI_GTC:
 #       *****************************************************************************************************************
 #       INICI CREACIO DE LA TAULA 'XARXA_GRAF' I PREPARACIO DELS CAMPS COST I REVERSE_COST
 #       *****************************************************************************************************************
-        XarxaCarrers = self.dlg.comboGraf.currentText()
+        #XarxaCarrers = self.dlg.comboGraf.currentText()
+        XarxaCarrers = 'stretch'
         sql_1="DROP TABLE IF EXISTS \"Xarxa_Graf\";\n"
         """ Es fa una copia de la taula que cont� el graf i s'afegeixen els camps cost i reverse_cost en funci� del que es necessiti, es crear� taula local temporal per evitar problemes de concurrencia"""
         sql_1+="CREATE local temporary TABLE \"Xarxa_Graf\" as (SELECT * FROM \"" + XarxaCarrers + "\");\n"
         if (self.dlg.comboMetodeTreball.currentText()=="Distancia"):
             """S'aplica com a cost tant directe com invers el valor de la longitud del segment"""
-            sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=st_length(\"the_geom\"), \"reverse_cost\"=st_length(\"the_geom\");\n"
+            sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=st_length(\"geom\"), \"reverse_cost\"=st_length(\"geom\");\n"
         else:
             if (self.dlg.chk_CostInvers.isChecked()):
                 """S'aplica com a 'cost' el valor del camp 'cost directe', i a 'reverse_cost' el valor del camp 'cost_invers"""
@@ -415,8 +417,8 @@ class ZI_GTC:
                 #sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"Cost_Directe\", \"reverse_cost\"=\"Cost_Directe\";\n"
             if (self.dlg.chk_CostNusos.isChecked()):
                 """Es suma al camp 'cost' i a 'reverse_cost' el valor dels semafors sempre i quan estigui la opci� marcada"""
-                sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"cost\"+(\"Cost_Total_Semafor_Tram\"), \"reverse_cost\"=\"reverse_cost\"+(\"Cost_Total_Semafor_Tram\");\n"
-        #print sql_1
+                sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"cost\"+(\"total_cost_semaphore\"), \"reverse_cost\"=\"reverse_cost\"+(\"total_cost_semaphore\");\n"
+        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -428,6 +430,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "Error CREATE Xarxa_Graf")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
             self.dlg.Progres.setVisible(False)
@@ -450,10 +453,10 @@ class ZI_GTC:
             sql_1="drop table if exists punts_interes_tmp;\n"
             if self.dlg.RB_campTaula.isChecked():
                 """Es crea la taula 'punts_interes_tmp' seleccionant el centroide de la entitat seleccionada utilitzant com a radi el valor del camp seleccionat"""
-                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") the_geom,tmp.\"id\"as pid,tmp.\""+str(self.dlg.comboCapaPunts.currentText())+"\" from ("+sql_buff+") tmp);\n"
+                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") geom,tmp.\"id\"as pid,tmp.\""+str(self.dlg.comboCapaPunts.currentText())+"\" from ("+sql_buff+") tmp);\n"
             else:
                 """Es crea la taula punts_interes_tmp seleccionant el centroide de la entitat seleccionada, utilizant un radi fix"""
-                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") the_geom,tmp.\"id\" as pid from ("+sql_buff+") tmp);\n"
+                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") geom,tmp.\"id\" as pid from ("+sql_buff+") tmp);\n"
                 
             #sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN pid BIGSERIAL PRIMARY KEY;\n"
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     x FLOAT;\n"
@@ -462,7 +465,7 @@ class ZI_GTC:
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     side CHAR;\n"
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     fraction FLOAT;\n"
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     newPoint geometry;\n"
-            #print sql_1
+            print (sql_1)
             cur.execute(sql_1)
             conn.commit()
         except Exception as ex:
@@ -473,6 +476,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "Error CREATE punts_interes_tmp")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
             self.dlg.Progres.setVisible(False)
@@ -487,10 +491,10 @@ class ZI_GTC:
 #       INICI ASSIGNACIO DEL VALOR DEL TRAM MES PROPER AL CAMP 'EDGE_ID' DE LA TAULA 'PUNTS_INTERES_TMP I LA PROJECCIO DEL PUNT D'INTERES SOBRE EL TRAM
 #       *****************************************************************************************************************
         """S'assigna el valor del tram més proper al punt d'interes en el camp 'edge_id' de la taula 'punts_interes_tmp'"""
-        sql_1="UPDATE \"punts_interes_tmp\" set \"edge_id\"=tram_proper.\"tram_id\" from (SELECT distinct on(Poi.pid) Poi.pid As Punt_id,Sg.id as Tram_id, ST_Distance(Sg.the_geom,Poi.the_geom)  as dist FROM \"Xarxa_Graf\" as Sg,\"punts_interes_tmp\" AS Poi ORDER BY  Poi.pid,ST_Distance(Sg.the_geom,Poi.the_geom),Sg.id) tram_proper where \"punts_interes_tmp\".\"pid\"=tram_proper.\"punt_id\";\n"
+        sql_1="UPDATE \"punts_interes_tmp\" set \"edge_id\"=tram_proper.\"tram_id\" from (SELECT distinct on(Poi.pid) Poi.pid As Punt_id,Sg.id as Tram_id, ST_Distance(Sg.geom,Poi.geom)  as dist FROM \"Xarxa_Graf\" as Sg,\"punts_interes_tmp\" AS Poi ORDER BY  Poi.pid,ST_Distance(Sg.geom,Poi.geom),Sg.id) tram_proper where \"punts_interes_tmp\".\"pid\"=tram_proper.\"punt_id\";\n"
         """Es calcula la fraccio del tram que on esta situat la projecci� del punt d'interes"""
-        sql_1+="UPDATE \"punts_interes_tmp\" SET fraction = ST_LineLocatePoint(e.the_geom, \"punts_interes_tmp\".the_geom),newPoint = ST_LineInterpolatePoint(e.the_geom, ST_LineLocatePoint(e.the_geom, \"punts_interes_tmp\".the_geom)) FROM \"Xarxa_Graf\" AS e WHERE \"punts_interes_tmp\".\"edge_id\" = e.id;\n"
-        #print sql_1
+        sql_1+="UPDATE \"punts_interes_tmp\" SET fraction = ST_LineLocatePoint(e.geom, \"punts_interes_tmp\".geom),newPoint = ST_LineInterpolatePoint(e.geom, ST_LineLocatePoint(e.geom, \"punts_interes_tmp\".geom)) FROM \"Xarxa_Graf\" AS e WHERE \"punts_interes_tmp\".\"edge_id\" = e.id;\n"
+        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -502,6 +506,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "Error UPDATE punts_interes_temp")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
             self.dlg.Progres.setVisible(False)
@@ -530,6 +535,7 @@ class ZI_GTC:
                 QMessageBox.information(None, "Error", "Error SELECT punts_interes_tmp")
                 conn.rollback()
                 self.eliminaTaulesCalcul(Fitxer)
+                self.eliminaTaulesTemporals()
                 self.bar.clearWidgets()
                 self.dlg.Progres.setValue(0)
                 self.dlg.Progres.setVisible(False)
@@ -547,7 +553,7 @@ class ZI_GTC:
         else:
             """Creació de la taula 'tbl_punts_finsl_tmp' on es tindrà tots els nodes de la xarxa que son a dins del radi fix d'acci� indicat"""
             sql_1+="CREATE local temporary TABLE tbl_punts_finals_tmp AS(SELECT node,agg_cost,start_vid FROM pgr_withPointsDD('SELECT id, source, target, cost, reverse_cost FROM \"Xarxa_Graf\" ORDER BY \"Xarxa_Graf\".id','SELECT pid, edge_id, fraction, side from \"punts_interes_tmp\"',array(select \"pid\"*(-1) from \"punts_interes_tmp\"),"+self.dlg.TL_Dist_Cost.text()+",driving_side := 'b',details := false));\n"
-        #print sql_1
+        print (sql_1)
         
         try:
             cur.execute(sql_1)
@@ -563,6 +569,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "CREATE tbl_punts_finals_tmp TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -584,7 +591,7 @@ class ZI_GTC:
         else:
             """Creació de la taula 'geo_punts_finals_tmp' on estan tots els nodes de la xarxa que son a dins del radi fix amb la geometria inclosa"""
             sql_1+="CREATE local temporary TABLE geo_punts_finals_tmp as (select \"" + XarxaCarrers + "_vertices_pgr\".*,\"tbl_punts_finals_tmp\".\"agg_cost\", \"tbl_punts_finals_tmp\".\"start_vid\", "+self.dlg.TL_Dist_Cost.text()+" from \"" + XarxaCarrers + "_vertices_pgr\",\"tbl_punts_finals_tmp\" where \"" + XarxaCarrers + "_vertices_pgr\".\"id\" =\"tbl_punts_finals_tmp\".\"node\" order by \"tbl_punts_finals_tmp\".\"start_vid\" desc,\"tbl_punts_finals_tmp\".\"agg_cost\");\n"
-        #print sql_1
+        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -599,6 +606,7 @@ class ZI_GTC:
             conn.rollback()
 
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -621,29 +629,29 @@ class ZI_GTC:
             #sql per distancia
             if (self.dlg.RB_campTaula.isChecked()):
                 #"""Creaci� de la taula que contindr� els trams que formen part del radi d'acci� indicat,si el radi escollit es mitjan�ant un camp de la taula"""
-                sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"the_geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"the_geom\")<=1 then (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"the_geom\") when (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"the_geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"the_geom\",1)=TRUE);\n"
+                sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")<=1 then (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\") when (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
             else:
                 """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
-                sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"the_geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"the_geom\")<=1 then ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"the_geom\") when ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"the_geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"the_geom\",1)=TRUE);\n"
+                sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")<=1 then ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\") when ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
         else:
             """Si s'ha escollit calcula mitjançant Temps """
             if (self.dlg.chk_CostInvers.isChecked()):
                 #sql per temps i cost invers
                 if (self.dlg.RB_campTaula.isChecked()):
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es mitjan�ant un camp de la taula"""
-                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"the_geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"the_geom\",1)=TRUE);\n"
+                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
                 else:
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
-                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"the_geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"the_geom\",1)=TRUE);\n"
+                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
             else:
                 #sql per temps i sense cost invers
                 if (self.dlg.RB_campTaula.isChecked()):
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es mitjan�ant un camp de la taula"""
-                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"the_geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"the_geom\",1)=TRUE);\n"
+                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
                 else:
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
-                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"the_geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"the_geom\",1)=TRUE);\n"
-        #print sql_1
+                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
+        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -657,6 +665,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "CREATE trams_finals_tmp TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -680,20 +689,20 @@ class ZI_GTC:
         sql_1+="m trams_finals_tmp%rowtype;\n"
         sql_1+="BEGIN\n"
         sql_1+="DROP TABLE IF EXISTS fraccio_trams_raw;\n"
-        sql_1+="CREATE local temporary TABLE fraccio_trams_raw (the_geom geometry, punt_id bigint,id_tram bigint,fraccio FLOAT,node bigint,fraccio_inicial FLOAT,cost_invers FLOAT,cost_directe FLOAT,target bigint,radi_inic FLOAT);\n"
+        sql_1+="CREATE local temporary TABLE fraccio_trams_raw (geom geometry, punt_id bigint,id_tram bigint,fraccio FLOAT,node bigint,fraccio_inicial FLOAT,cost_invers FLOAT,cost_directe FLOAT,target bigint,radi_inic FLOAT);\n"
         sql_1+="FOR r IN SELECT \"trams_finals_tmp\".* FROM \"trams_finals_tmp\" WHERE \"trams_finals_tmp\".\"id\" not in (select \"edge_id\" from \"punts_interes_tmp\")\n"
         sql_1+="LOOP\n"
-        sql_1+="insert into fraccio_trams_raw VALUES(ST_LineSubstring((r.\"the_geom\"),"
-        sql_1+="case when (select ST_LineLocatePoint((r.\"the_geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then 0 else 1-r.\"fraccio\"\n"
+        sql_1+="insert into fraccio_trams_raw VALUES(ST_LineSubstring((r.\"geom\"),"
+        sql_1+="case when (select ST_LineLocatePoint((r.\"geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then 0 else 1-r.\"fraccio\"\n"
         sql_1+="END,\n"
-        sql_1+="case when (select ST_LineLocatePoint((r.\"the_geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then r.\"fraccio\" else 1\n"
+        sql_1+="case when (select ST_LineLocatePoint((r.\"geom\"),(select \"geo_punts_finals_tmp\".\"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=r.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=r.\"id_punt\")))<0.001 then r.\"fraccio\" else 1\n"
         sql_1+="END),r.\"id_punt\"*(-1),r.\"id\",0,r.\"node\",0,0,0,0);\n"
         sql_1+="RETURN NEXT r;\n"
         sql_1+="END LOOP;\n"
 
         sql_1+="FOR m IN SELECT \"trams_finals_tmp\".* FROM \"trams_finals_tmp\" WHERE \"trams_finals_tmp\".\"id\" in (select \"edge_id\" from \"punts_interes_tmp\")\n"
         sql_1+="LOOP\n"
-        sql_1+="insert into fraccio_trams_raw VALUES(m.\"the_geom\",m.\"id_punt\"*(-1),m.\"id\",0,m.\"node\",0,0,0);\n"
+        sql_1+="insert into fraccio_trams_raw VALUES(m.\"geom\",m.\"id_punt\"*(-1),m.\"id\",0,m.\"node\",0,0,0);\n"
 
         sql_1+="RETURN NEXT m;\n"
         sql_1+="END LOOP;\n"
@@ -703,13 +712,13 @@ class ZI_GTC:
         sql_1+="$BODY$\n"
         sql_1+="LANGUAGE 'plpgsql' ;\n"
         
-        sql_1+="SELECT \"the_geom\" FROM Cobertura();\n"
+        sql_1+="SELECT \"geom\" FROM Cobertura();\n"
 
         progress.setValue(45)
         self.dlg.Progres.setValue(45)
         QApplication.processEvents()
 
-        #print sql_1
+        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -722,6 +731,7 @@ class ZI_GTC:
             
             QMessageBox.information(None, "Error", "Select Cobertura ERROR")
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -743,6 +753,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "Error DROP Cobertura")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
             self.dlg.Progres.setVisible(False)
@@ -771,6 +782,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "UPDATE fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -802,6 +814,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "UPDATE 2 fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -834,6 +847,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "UPDATE 3 fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -853,7 +867,7 @@ class ZI_GTC:
         if (self.dlg.comboMetodeTreball.currentText()!="Distancia"):
             """Calcul del la fracci� final de cada tram en el cas d'haber escollit temps"""
             cost_tram="(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"fraccio_trams_raw\".\"target\" THEN \"fraccio_trams_raw\".\"cost_invers\" ELSE \"fraccio_trams_raw\".\"cost_directe\" END)"
-            where_tram=" FROM \"geo_punts_finals_tmp\" WHERE ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"fraccio_trams_raw\".\"the_geom\",1)=TRUE"
+            where_tram=" FROM \"geo_punts_finals_tmp\" WHERE ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"fraccio_trams_raw\".\"geom\",1)=TRUE"
             sql_1="UPDATE \"fraccio_trams_raw\" SET \"fraccio\"=" 
             if (self.dlg.RB_campTaula.isChecked()):
                 """ Si el radi es variable"""
@@ -869,7 +883,7 @@ class ZI_GTC:
                 sql_1+=where_tram+";\n"
         else:
             """Calcul del la fracci� final de cada tram en el cas d'haber escollit distancia"""
-            cost_tram="ST_Length(\"fraccio_trams_raw\".\"the_geom\")"
+            cost_tram="ST_Length(\"fraccio_trams_raw\".\"geom\")"
             where_tram=""
             sql_1="UPDATE \"fraccio_trams_raw\" SET \"fraccio\"=" 
             if (self.dlg.RB_campTaula.isChecked()):
@@ -898,6 +912,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "UPDATE 4 fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -915,15 +930,15 @@ class ZI_GTC:
 #       INICI MODIFICACIO DE LA GEOMETRIA DELS TRAMS FINALS SEGONS LA FRACCIO CALCULADA 
 #       *****************************************************************************************************************
         """Es modifiquen els trams finals del trajecte segons el que falti per arribar al cost desitjat"""
-        sql_1="update \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\"" 
+        sql_1="update \"fraccio_trams_raw\" set \"geom\"=final.\"geom\"" 
         sql_1+="from"
         sql_1+="(select distinct(ST_LineSubstring("
-        sql_1+="(m.\"the_geom\")"
+        sql_1+="(m.\"geom\")"
         sql_1+=","
-        sql_1+="(case when (select ST_LineLocatePoint((m.\"the_geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then 0 else 1-m.\"fraccio\" END)"
+        sql_1+="(case when (select ST_LineLocatePoint((m.\"geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then 0 else 1-m.\"fraccio\" END)"
         sql_1+=","
-        sql_1+="(case when (select ST_LineLocatePoint((m.\"the_geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then m.\"fraccio\" else 1 END)"
-        sql_1+="))  the_geom"
+        sql_1+="(case when (select ST_LineLocatePoint((m.\"geom\"),(select \"the_geom\" from \"geo_punts_finals_tmp\" where \"geo_punts_finals_tmp\".\"id\"=m.\"node\" and \"geo_punts_finals_tmp\".\"start_vid\"=m.\"punt_id\"*-1)))<0.01 then m.\"fraccio\" else 1 END)"
+        sql_1+="))  geom"
         sql_1+=","
         sql_1+="m.\"id_tram\""
         sql_1+="from \"fraccio_trams_raw\" m "
@@ -946,6 +961,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "UPDATE 5 fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -962,8 +978,8 @@ class ZI_GTC:
 #       INICI INSERTAR ELS TRAMS INICIALS DELS QUE PARTIRA EL GRAF 
 #       *****************************************************************************************************************
         """S'afegeixen els trams inicials de cada graf per modificarlos posteriorment"""
-        sql_1="insert into \"fraccio_trams_raw\" (select SX.\"the_geom\",PI.\"pid\" as punt_id,SX.\"id\"as id_tram,999 as fraccio,SX.\"source\" as node,PI.\"fraction\" as fraccio_inicial,SX.\"cost\",SX.\"reverse_cost\" from \"Xarxa_Graf\" SX inner join (Select \"edge_id\",\"pid\",\"fraction\" from \"punts_interes_tmp\") PI on SX.\"id\"=PI.\"edge_id\");\n"
-        #print sql_1
+        sql_1="insert into \"fraccio_trams_raw\" (select SX.\"geom\",PI.\"pid\" as punt_id,SX.\"id\"as id_tram,999 as fraccio,SX.\"source\" as node,PI.\"fraction\" as fraccio_inicial,SX.\"cost\",SX.\"reverse_cost\" from \"Xarxa_Graf\" SX inner join (Select \"edge_id\",\"pid\",\"fraction\" from \"punts_interes_tmp\") PI on SX.\"id\"=PI.\"edge_id\");\n"
+        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -977,6 +993,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "INSERT fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -997,7 +1014,7 @@ class ZI_GTC:
             if (self.dlg.RB_campTaula.isChecked()):
                 """En el cas de radi variable, s'actualiza el camp radi inicial dels trams inicials """
                 sql_1="update \"fraccio_trams_raw\" set \"radi_inic\"=\"tbl_punts_finals_tmp\".\"init_radi\" from \"tbl_punts_finals_tmp\" where \"punt_id\"*-1=\"start_vid\" and \"fraccio\"=999"
-                #print sql_1
+                print (sql_1)
                 try:
                     cur.execute(sql_1)
                     conn.commit()
@@ -1011,6 +1028,7 @@ class ZI_GTC:
                     QMessageBox.information(None, "Error", "UPDATE 6 fraccio_trams_raw TABLE ERROR")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.eliminaTaulesTemporals()
         
                     self.bar.clearWidgets()
                     self.dlg.Progres.setValue(0)
@@ -1020,30 +1038,30 @@ class ZI_GTC:
                                     
                     return "ERROR"        
             
-                cost_tram="ST_Length(SXI.\"the_geom\")"
-                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
+                cost_tram="ST_Length(SXI.\"geom\")"
+                sql_1="UPDATE \"fraccio_trams_raw\" set \"geom\"=final.\"geom\" from (select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/"+cost_tram+"))>0 then (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/"+cost_tram+")) else 0 end)"
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/"+cost_tram+"))<1 then (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/"+cost_tram+")) else 1 end)"
-                sql_1+=") as the_geom, FT.\"punt_id\",FT.\"id_tram\",FT.\"fraccio\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) final"
+                sql_1+=") as geom, FT.\"punt_id\",FT.\"id_tram\",FT.\"fraccio\" "
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
             else:
                 """ Calcul amb distancia i radi fix"""
-                cost_tram="ST_Length(SXI.\"the_geom\")"
-                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
+                cost_tram="ST_Length(SXI.\"geom\")"
+                sql_1="UPDATE \"fraccio_trams_raw\" set \"geom\"=final.\"geom\" from (select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+"))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+")) else 0 end)"
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+"))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+")) else 1 end)"
-                sql_1+=") as the_geom, FT.\"punt_id\",FT.\"id_tram\",FT.\"fraccio\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) final"
+                sql_1+=") as geom, FT.\"punt_id\",FT.\"id_tram\",FT.\"fraccio\" "
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
         else:
             """ Calcul amb temps i radi variable"""
             if (self.dlg.RB_campTaula.isChecked()):
                 """En el cas de radi variable, s'actualiza el camp radi inicial dels trams inicials """
                 sql_1="update \"fraccio_trams_raw\" set \"radi_inic\"=\"tbl_punts_finals_tmp\".\"init_radi\" from \"tbl_punts_finals_tmp\" where \"punt_id\"*-1=\"start_vid\" and \"fraccio\"=999"
-                #print sql_1
+                print (sql_1)
                 try:
                     cur.execute(sql_1)
                     conn.commit()
@@ -1057,6 +1075,7 @@ class ZI_GTC:
                     QMessageBox.information(None, "Error", "UPDATE 7 fraccio_trams_raw TABLE ERROR")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.eliminaTaulesTemporals()
         
                     self.bar.clearWidgets()
                     self.dlg.Progres.setValue(0)
@@ -1065,39 +1084,39 @@ class ZI_GTC:
                     self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
                                     
                     return "ERROR"        
-                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from "
-                sql_1+="(select ST_Union(TOT.the_geom) the_geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
+                sql_1="UPDATE \"fraccio_trams_raw\" set \"geom\"=final.\"geom\" from "
+                sql_1+="(select ST_Union(TOT.geom) geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/(FT.\"cost_invers\")))>0 then (FT.\"fraccio_inicial\"-(FT.\"radi_inic\"/(FT.\"cost_invers\"))) else 0 end)"
                 sql_1+=","
                 sql_1+="FT.\"fraccio_inicial\""
-                sql_1+=") as the_geom, FT.\"punt_id\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
+                sql_1+=") as geom, FT.\"punt_id\" "
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
                 sql_1+="UNION "
-                sql_1+="select ST_LineSubstring((SXI.\"the_geom\"),"
+                sql_1+="select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/(FT.\"cost_directe\")))<1 then (FT.\"fraccio_inicial\"+(FT.\"radi_inic\"/(FT.\"cost_directe\"))) else 1 end)"
-                sql_1+=") as the_geom, FT.\"punt_id\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) TOT GROUP BY TOT.\"punt_id\") final"
+                sql_1+=") as geom, FT.\"punt_id\" "
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) TOT GROUP BY TOT.\"punt_id\") final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
             else:
                 """ Calcul amb temps i radi fix"""
-                sql_1="UPDATE \"fraccio_trams_raw\" set \"the_geom\"=final.\"the_geom\" from "
-                sql_1+="(select ST_Union(TOT.the_geom) the_geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"the_geom\"),"
+                sql_1="UPDATE \"fraccio_trams_raw\" set \"geom\"=final.\"geom\" from "
+                sql_1+="(select ST_Union(TOT.geom) geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_invers\")))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_invers\"))) else 0 end)"
                 sql_1+=","
                 sql_1+="FT.\"fraccio_inicial\""
-                sql_1+=") as the_geom, FT.\"punt_id\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
+                sql_1+=") as geom, FT.\"punt_id\" "
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
                 sql_1+="UNION "
-                sql_1+="select ST_LineSubstring((SXI.\"the_geom\"),"
+                sql_1+="select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=","
                 sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_directe\")))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_directe\"))) else 1 end)"
-                sql_1+=") as the_geom, FT.\"punt_id\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"the_geom\" as the_geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) TOT GROUP BY TOT.\"punt_id\") final"
+                sql_1+=") as geom, FT.\"punt_id\" "
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) TOT GROUP BY TOT.\"punt_id\") final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
-        
+        print(sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -1111,6 +1130,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "UPDATE 8 fraccio_trams_raw TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -1130,7 +1150,7 @@ class ZI_GTC:
         sql_1="DROP TABLE IF EXISTS fraccio_trams_tmp;\n"
 
         """Eliminaci� de trams duplicats"""
-        sql_1+="CREATE local temporary TABLE fraccio_trams_tmp AS (select distinct(the_geom),punt_id,radi_inic from fraccio_trams_raw);\n"
+        sql_1+="CREATE local temporary TABLE fraccio_trams_tmp AS (select distinct(geom),punt_id,radi_inic from fraccio_trams_raw);\n"
         
         try:
             cur.execute(sql_1)
@@ -1145,6 +1165,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "CREATE fraccio_trams_tmp TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -1162,7 +1183,7 @@ class ZI_GTC:
 #       *****************************************************************************************************************
         """ Es fa la uni� de tots els trams des del servidor POSTGRES dins de la taula Graf_utilitzat_(data)"""
         sql_1="drop table if exists Graf_utilitzat_"+Fitxer+";\n"
-        sql_1+="CREATE TABLE Graf_utilitzat_"+Fitxer+" AS (Select ST_Union(TOT.the_geom) the_geom, TOT.\"punt_id\" as id from (select the_geom,punt_id,radi_inic from fraccio_trams_tmp) TOT group by TOT.\"punt_id\");\n"
+        sql_1+="CREATE local temporary TABLE Graf_utilitzat_"+Fitxer+" AS (Select ST_Union(TOT.geom) geom, TOT.\"punt_id\" as id from (select geom,punt_id,radi_inic from fraccio_trams_tmp) TOT group by TOT.\"punt_id\");\n"
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -1176,6 +1197,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "CREATE Graf_utilitzat_ TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -1192,7 +1214,7 @@ class ZI_GTC:
 #       INICI CREACIO TAULA BUFFER_FINAL_(DATA) QUE CONTINDRA EL BUFFER DE LA UNIO DELS TRAMS 
 #       *****************************************************************************************************************
         sql_1+="drop table if exists Buffer_Final_"+Fitxer+";\n"
-        sql_1+="CREATE TABLE Buffer_Final_"+Fitxer+" AS (Select ST_Union(TOT.the_geom) the_geom, TOT.\"punt_id\" from (Select ST_Buffer(the_geom,"+self.dlg.TL_radiZI.text()+") the_geom,punt_id from fraccio_trams_tmp)TOT group by TOT.\"punt_id\");\n"
+        sql_1+="CREATE TABLE Buffer_Final_"+Fitxer+" AS (Select ST_Union(TOT.geom) geom, TOT.\"punt_id\" from (Select ST_Buffer(geom,"+self.dlg.TL_radiZI.text()+") geom,punt_id from fraccio_trams_tmp)TOT group by TOT.\"punt_id\");\n"
             
         try:
             cur.execute(sql_1)
@@ -1207,6 +1229,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "CREATE Buffer_Final TABLE ERROR")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
 
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
@@ -1290,6 +1313,7 @@ class ZI_GTC:
                 print (message)
                 QMessageBox.information(None, "Error", "ERROR select count")
                 self.eliminaTaulesCalcul(Fitxer)
+                self.eliminaTaulesTemporals()
     
                 self.bar.clearWidgets()
                 self.dlg.Progres.setValue(0)
@@ -1299,6 +1323,24 @@ class ZI_GTC:
                 self.dlg.setEnabled(True)
                 return
         
+        try:
+            self.detect_database_version()
+        except Exception as ex:
+            print("ERROR creant la taula temporal de la version antiga")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "ERROR creant la taula temporal de la version antiga")
+            self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
+
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            self.dlg.setEnabled(True)
+            return
 
 #       *****************************************************************************************f************************
 #       INICI CREACIO DE LES TAULES RESUM DESDE EL CSV SUMINISTRAT 
@@ -1311,10 +1353,14 @@ class ZI_GTC:
             a=time.time()
             while trobat:
                 if (path != ''):
-                    if (os.path.exists(path + "/tr_illes.csv")):
+                    if versio_db == "1.0":
+                        ver = "v1"
+                    else:
+                        ver = "v2"
+                    if (os.path.exists(path + f"/tr_illes_{ver}.csv")):
                         trobat = False 
                         
-                        arxiu = open(path + "/tr_illes.csv", 'r')
+                        arxiu = open(path + f"/tr_illes_{ver}.csv", 'r')
                         dummy=arxiu.readline()
                         lines = arxiu.readlines()
                         try:
@@ -1335,6 +1381,7 @@ class ZI_GTC:
                             QMessageBox.information(None, "Error", "I am unable to connect to the database")
                             conn.rollback()
                             self.eliminaTaulesCalcul(Fitxer)
+                            self.eliminaTaulesTemporals()
                 
                             self.bar.clearWidgets()
                             self.dlg.Progres.setValue(0)
@@ -1359,15 +1406,20 @@ class ZI_GTC:
                     self.dlg.setEnabled(True)
                     self.bar.clearWidgets()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.eliminaTaulesTemporals()
                     return
                    
                 
                 if (self.dlg.bt_Parcel.isChecked()):
                     if (path != ''):
-                        if (os.path.exists(path + "/tr_parceles.csv")):
+                        if versio_db == "1.0":
+                            ver = "v1"
+                        else:
+                            ver = "v2"
+                        if (os.path.exists(path + f"/tr_parceles_{ver}.csv")):
                             trobat = False 
                             
-                            arxiu = open(path + "/tr_parceles.csv", 'r')
+                            arxiu = open(path + f"/tr_parceles_{ver}.csv", 'r')
                             dummy=arxiu.readline()
                             lines = arxiu.readlines()
                             try:
@@ -1389,6 +1441,7 @@ class ZI_GTC:
                                 QMessageBox.information(None, "Error", "I am unable to connect to the database")
                                 conn.rollback()
                                 self.eliminaTaulesCalcul(Fitxer)
+                                self.eliminaTaulesTemporals()
                     
                                 self.bar.clearWidgets()
                                 self.dlg.Progres.setValue(0)
@@ -1414,15 +1467,20 @@ class ZI_GTC:
                         self.dlg.setEnabled(True)
                         self.bar.clearWidgets()
                         self.eliminaTaulesCalcul(Fitxer)
+                        self.eliminaTaulesTemporals()
                         return
         
                 if (self.dlg.bt_Portals.isChecked()):
                     self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: rgb(255, 170, 142)')
                     if (path != ''):
-                        if (os.path.exists(path + "/tr_npolicia.csv")):
+                        if versio_db == "1.0":
+                            ver = "v1"
+                        else:
+                            ver = "v2"
+                        if (os.path.exists(path + f"/tr_npolicia_{ver}.csv")):
                             trobat = False 
                             
-                            arxiu = open(path + "/tr_npolicia.csv", 'r')
+                            arxiu = open(path + f"/tr_npolicia_{ver}.csv", 'r')
                             dummy=arxiu.readline()
                             lines = arxiu.readlines()
                             try:
@@ -1444,6 +1502,7 @@ class ZI_GTC:
                                 QMessageBox.information(None, "Error", "I am unable to connect to the database")
                                 conn.rollback()
                                 self.eliminaTaulesCalcul(Fitxer)
+                                self.eliminaTaulesTemporals()
                     
                                 self.bar.clearWidgets()
                                 self.dlg.Progres.setValue(0)
@@ -1468,6 +1527,7 @@ class ZI_GTC:
                         self.dlg.setEnabled(True)
                         self.bar.clearWidgets()
                         self.eliminaTaulesCalcul(Fitxer)
+                        self.eliminaTaulesTemporals()
                         return
         else:
             a=time.time()
@@ -1521,6 +1581,7 @@ class ZI_GTC:
                     print (message)
                     QMessageBox.information(None, "Error", "Error a la connexio")
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.eliminaTaulesTemporals()
         
                     self.bar.clearWidgets()
                     self.dlg.Progres.setValue(0)
@@ -1556,6 +1617,7 @@ class ZI_GTC:
                                 QMessageBox.information(None, "Error", "ERROR SELECT SRID")
                                 conn.rollback()
                                 self.eliminaTaulesCalcul(Fitxer)
+                                self.eliminaTaulesTemporals()
                     
                                 self.bar.clearWidgets()
                                 self.dlg.Progres.setValue(0)
@@ -1568,6 +1630,7 @@ class ZI_GTC:
                             Valor_SRID=auxlist[0][0]
                             if tipus_entitat_punt:
                                 alter = 'ALTER TABLE "LayerExportat'+Fitxer+'" ALTER COLUMN geom TYPE geometry(Point,'+str(Valor_SRID)+') USING ST_GeometryN(geom,1);'
+                                print(Valor_SRID)
                             
                                 try:
                                     cur.execute(alter)
@@ -1580,6 +1643,7 @@ class ZI_GTC:
                                     QMessageBox.information(None, "Error", "ALTER TABLE ERROR_geometry")
                                     conn.rollback()
                                     self.eliminaTaulesCalcul(Fitxer)
+                                    self.eliminaTaulesTemporals()
                         
                                     self.bar.clearWidgets()
                                     self.dlg.Progres.setValue(0)
@@ -1601,6 +1665,7 @@ class ZI_GTC:
                                     QMessageBox.information(None, "Error", ErrorMessage+'\n')
                                     conn.rollback()
                                     self.eliminaTaulesCalcul(Fitxer)
+                                    self.eliminaTaulesTemporals()
                         
                                     self.bar.clearWidgets()
                                     self.dlg.Progres.setValue(0)
@@ -1622,6 +1687,7 @@ class ZI_GTC:
                                         QMessageBox.information(None, "Error", errorMessage)
                                         conn.rollback()
                                         self.eliminaTaulesCalcul(Fitxer)
+                                        self.eliminaTaulesTemporals()
                                     
                                     self.bar.clearWidgets()
                                     self.dlg.Progres.setValue(0)
@@ -1638,6 +1704,7 @@ class ZI_GTC:
                                 QMessageBox.information(None, "Error", ErrorMessage)
                                 conn.rollback()
                                 self.eliminaTaulesCalcul(Fitxer)
+                                self.eliminaTaulesTemporals()
                     
                                 self.bar.clearWidgets()
                                 self.dlg.Progres.setValue(0)
@@ -1662,14 +1729,15 @@ class ZI_GTC:
 #               INICI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
 #               *****************************************************************************************************************
                 if (tipus_entitat_punt==True):
-                    XarxaCarrers = self.dlg.comboGraf.currentText()
+                   # XarxaCarrers = self.dlg.comboGraf.currentText()
+                    XarxaCarrers = 'stretch'
                     if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
                         sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
                         buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
                         vlayer=buffer_resultat['OUTPUT']
                         vlayer_graf=graf_resultat['OUTPUT']
                         sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
-                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
                         if error[0] != 0:
                             iface.messageBar().pushMessage(u'Error', error[1])
 
@@ -1681,11 +1749,11 @@ class ZI_GTC:
 
                         #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
                         # layer - QGIS vector layer
-                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
                         if error[0] != 0:
                             iface.messageBar().pushMessage(u'Error', error[1])
                             
-                        #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
                         #if error[0] != 0:
                         #    iface.messageBar().pushMessage(u'Error', error[1])
                             
@@ -1718,7 +1786,8 @@ class ZI_GTC:
                     vlayer=result_buffer['OUTPUT']
                     #vlayer=punts_lyr
                     sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
-                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (the_geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                    print(vlayer.crs())
+                    error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
                     if error[0] != 0:
                         iface.messageBar().pushMessage(u'Error', error[1])
                     pass
@@ -1732,35 +1801,40 @@ class ZI_GTC:
                 self.dlg.Progres.setValue(60)
                 QApplication.processEvents()
                 sql_ZI=sql_buffer 
-                sql_PART1_ZI="SELECT row_number() OVER () AS \"id\",ILL.\"D_S_I\",ILL.\"geom\",RS.\"Habitants\" FROM (select \"ILLES\".\"D_S_I\",\"ILLES\".\"geom\" from \"ILLES\" where \"ILLES\".\"id\" NOT IN (select \"ILLES\".\"id\" from \"ILLES\" INNER JOIN ("
-                sql_TOTAL_ZI=sql_PART1_ZI+sql_ZI+") TOT2 on ST_Intersects(\"ILLES\".\"geom\",TOT2.\"the_geom\"))) ILL JOIN \"Illes_Resum_"+Fitxer+"\" RS on (ILL.\"D_S_I\" = RS.\"ILLES_Codificades\")"
+                sql_PART1_ZI="SELECT row_number() OVER () AS \"id\",ILL.\"cadastral_zoning_reference\",ILL.\"geom\",RS.\"Habitants\" FROM (select \"zone\".\"cadastral_zoning_reference\",\"zone\".\"geom\" from \"zone\" where \"zone\".\"id_zone\" NOT IN (select \"zone\".\"id_zone\" from \"zone\" INNER JOIN ("
+                sql_TOTAL_ZI=sql_PART1_ZI+sql_ZI+") TOT2 on ST_Intersects(\"zone\".\"geom\",TOT2.\"geom\"))) ILL JOIN \"Illes_Resum_"+Fitxer+"\" RS on (ILL.\"cadastral_zoning_reference\" = RS.\"ILLES_Codificades\")"
                 if (self.dlg.chk_poblacio.isChecked()):
                     if (self.dlg.bt_ILLES.isChecked()):
                         """Si s'ha seleccionat ILLES"""
-                        #sql_total="select row_number() over() as id_sql, ILLES_RESUM.\"id\",ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_diss_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_diss_"+Fitxer+"\".\"the_geom\",1)=TRUE"
-                        sql_total="select distinct(ILLES_RESUM.\"id\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        #sql_total="select row_number() over() as id_sql, ILLES_RESUM.\"id\",ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_diss_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_diss_"+Fitxer+"\".\"geom\",1)=TRUE"
+                        sql_total="select distinct(ILLES_RESUM.\"id_zone\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"zone\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"zone\".\"cadastral_zoning_reference\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                     if (self.dlg.bt_Parcel.isChecked()):
                         """Si s'ha seleccionat PARCELES"""
-                        sql_total="select distinct(PARCELES_RESUM.\"id\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"utm_total\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        sql_total="select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel_temp\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel_temp\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                         
                     if (self.dlg.bt_Portals.isChecked()):
                         """Si s'ha seleccionat PORTALS"""
-                        sql_total="select distinct(PORTALS_RESUM.\"id\"),PORTALS_RESUM.\"geom\",PORTALS_RESUM.\"Habitants\" from (select * from \"dintreilla\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"dintreilla\".\"Carrer_Num_Bis\"=\"Resum_Temp_"+Fitxer+"\".\"NPolicia\") PORTALS_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PORTALS_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"the_geom\",1)=TRUE"
+                        sql_total="select distinct(PORTALS_RESUM.\"id_address\"),PORTALS_RESUM.\"geom\",PORTALS_RESUM.\"Habitants\" from (select * from \"address\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"address\".\"designator\"=\"Resum_Temp_"+Fitxer+"\".\"NPolicia\") PORTALS_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PORTALS_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                         
     #               *****************************************************************************************************************
     #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
     #               *****************************************************************************************************************
     #                uri.setDataSource("","("+sql_total+")","geom","","id")
-
                     QApplication.processEvents()
                     #uri.setDataSource("","("+sql_total+")",geometria,"","id_sql")
-                    uri.setDataSource("","("+sql_total+")","geom","","id")
+                    if self.dlg.bt_ILLES.isChecked():
+                        uri.setDataSource("","("+sql_total+")","geom","","id_zone")
+                    if self.dlg.bt_Parcel.isChecked():
+                        uri.setDataSource("","("+sql_total+")","geom","","id_parcel")
+                    if self.dlg.bt_Portals.isChecked():
+                        uri.setDataSource("","("+sql_total+")","geom","","id_address")
                     QApplication.processEvents()
                     
                     titol=self.dlg.TB_titol.text().replace("'","\'")
                     titol2='Cobertura de '
                     titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
-                    vlayer = QgsVectorLayer(uri.uri(False), titol3.decode('utf8'), "postgres")
+                    vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
+                    print(vlayer.crs())
                     QApplication.processEvents()
                     if vlayer.isValid():
                         Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -1772,7 +1846,9 @@ class ZI_GTC:
                             transform_context = QgsProject.instance().transformContext()
                             error=QgsVectorFileWriter.writeAsVectorFormatV2(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
                         else:
-                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            #error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", "utf-8", vlayer.crs(), "ESRI Shapefile")
+                            error=QgsVectorFileWriter.writeAsVectorFormat(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", "utf-8", Valor_SRID, "ESRI Shapefile")
+
                         """Es carrega el Shape a l'entorn del QGIS"""
                         vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
@@ -1812,6 +1888,7 @@ class ZI_GTC:
                         QMessageBox.information(None, "Error", "Error SELECT suma habitants")
                         conn.rollback()
                         self.eliminaTaulesCalcul(Fitxer)
+                        self.eliminaTaulesTemporals()
                         self.bar.clearWidgets()
                         self.dlg.Progres.setValue(0)
                         self.dlg.Progres.setVisible(False)
@@ -1835,6 +1912,7 @@ class ZI_GTC:
                         QMessageBox.information(None, "Error", "Error SELECT Suma")
                         conn.rollback()
                         self.eliminaTaulesCalcul(Fitxer)
+                        self.eliminaTaulesTemporals()
                         self.bar.clearWidgets()
                         self.dlg.Progres.setValue(0)
                         self.dlg.Progres.setVisible(False)
@@ -1912,10 +1990,10 @@ class ZI_GTC:
                 if (self.dlg.chk_calc_local.isChecked()): # and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
                     sql_total1="SELECT * FROM Buffer_Final_"+Fitxer
                 else:
-                    sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"the_geom\" FROM Buffer_Final_"+Fitxer
+                    sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"geom\" FROM Buffer_Final_"+Fitxer
 
                 """ Creació del tematic del buffer"""
-                uri.setDataSource("","("+sql_total1+")","the_geom","","id")
+                uri.setDataSource("","("+sql_total1+")","geom","","id")
                 titol=self.dlg.TB_titol.text().replace("'","\'")
                 titol2='ZI: '
                 titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
@@ -1969,7 +2047,7 @@ class ZI_GTC:
                     if (self.dlg.chk_calc_local.isChecked()):# and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
                         vlayer=vlayer_graf
                     else:
-                        uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","the_geom","","id")
+                        uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","geom","","id")
                         vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
 
                     if vlayer.isValid():
@@ -2026,6 +2104,7 @@ class ZI_GTC:
                     
         
         self.eliminaTaulesCalcul(Fitxer)
+        self.eliminaTaulesTemporals()
         
         
         nom_conn=self.dlg.comboConnexio.currentText()
@@ -2087,7 +2166,7 @@ class ZI_GTC:
         QApplication.processEvents()
         punts_lyr = QgsVectorLayer(uri2.uri(False), "punts", "postgres")
         QApplication.processEvents()
-        uri2.setDataSource("","("+sql_xarxa+")","the_geom","","id")
+        uri2.setDataSource("","("+sql_xarxa+")","geom","","id")
         QApplication.processEvents()
         network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
         QApplication.processEvents()
@@ -2095,7 +2174,7 @@ class ZI_GTC:
         parameters = {'INPUT': network_lyr,
                       'START_POINTS': punts_lyr,
                       'STRATEGY': 0,
-                      'TRAVEL_COST':self.dlg.TL_Dist_Cost.text(),
+                      'TRAVEL_COST2':self.dlg.TL_Dist_Cost.text(),
                       'DIRECTION_FIELD': '',
                       'VALUE_FORWARD': '',
                       'VALUE_BACKWARD': '',
@@ -2169,7 +2248,7 @@ class ZI_GTC:
             # VEL_PS=0
             alg_params = {
                 'FIELD_LENGTH': 10,
-                'FIELD_NAME': 'VELOCITAT_PS',
+                'FIELD_NAME': 'speed',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
                 'FORMULA': '0*0',
@@ -2182,7 +2261,7 @@ class ZI_GTC:
             # VEL_PS_INV=0
             alg_params = {
                 'FIELD_LENGTH': 10,
-                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_NAME': 'reverse_speed',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
                 'FORMULA': '0*0',
@@ -2198,7 +2277,7 @@ class ZI_GTC:
                 'FIELD_NAME': 'VEL_KMH',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
-                'FORMULA': '\"VELOCITAT_PS_INV\"*60/1000',
+                'FORMULA': '\"reverse_speed\"*60/1000',
                 'INPUT': outputs['Vel_ps0']['OUTPUT'],
                 'NEW_FIELD': False,
                 'OUTPUT': 'memory:'
@@ -2211,7 +2290,7 @@ class ZI_GTC:
                 'FIELD_NAME': 'VEL_KMH',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
-                'FORMULA': 'VELOCITAT_PS*60/1000',
+                'FORMULA': 'speed*60/1000',
                 'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
                 'NEW_FIELD': True,
                 'OUTPUT': 'memory:'
@@ -2222,7 +2301,7 @@ class ZI_GTC:
             # VEL_PS=0
             alg_params = {
                 'FIELD_LENGTH': 10,
-                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_NAME': 'reverse_speed',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
                 'FORMULA': '0*0',
@@ -2235,7 +2314,7 @@ class ZI_GTC:
             # VEL_PS_INV=0
             alg_params = {
                 'FIELD_LENGTH': 10,
-                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_NAME': 'reverse_speed',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
                 'FORMULA': '0*0',
@@ -2251,12 +2330,11 @@ class ZI_GTC:
                 'FIELD_NAME': 'VEL_KMH',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
-                'FORMULA': '\"VELOCITAT_PS\"*60/1000',
+                'FORMULA': '\"speed\"*60/1000',
                 'INPUT': outputs['Vel_ps0']['OUTPUT'],
                 'NEW_FIELD': False,
                 'OUTPUT': 'memory:'
             }
-            outputs['Creacio_vel_kmh_inv'] = processing.run('qgis:fieldcalculator', alg_params)
         
             # CREACIO_VEL_KMH_DIREC
             alg_params = {
@@ -2264,7 +2342,7 @@ class ZI_GTC:
                 'FIELD_NAME': 'VEL_KMH',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
-                'FORMULA': 'VELOCITAT_PS*60/1000',
+                'FORMULA': 'speed*60/1000',
                 'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
                 'NEW_FIELD': True,
                 'OUTPUT': 'memory:'
@@ -2320,7 +2398,7 @@ class ZI_GTC:
         QApplication.processEvents()
         punts_lyr = QgsVectorLayer(uri2.uri(False), "punts", "postgres")
         QApplication.processEvents()
-        uri2.setDataSource("","("+sql_xarxa+")","the_geom","","id")
+        uri2.setDataSource("","("+sql_xarxa+")","geom","","id")
         QApplication.processEvents()
         network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
         QApplication.processEvents()
@@ -2466,7 +2544,7 @@ class ZI_GTC:
                 feats.append(feat_item)
         pr.addFeatures(feats)
         vl.updateExtents()
-        QgsProject.instance().addMapLayer(vl)
+        #QgsProject.instance().addMapLayer(vl)
         #outputs={}
         
         if (self.dlg.chk_CostNusos.isChecked()):
@@ -2478,7 +2556,7 @@ class ZI_GTC:
                 'FIELD_NAME': 'VEL_KMH',
                 'FIELD_PRECISION': 9,
                 'FIELD_TYPE': 0,
-                'FORMULA': '($length /(($length/((\"VELOCITAT_PS\"+\"VELOCITAT_PS_INV\")))+(\"Cost_Total_Semafor_Tram\"*($length/\"L_TRAM_TEMP\"))))*60/1000',
+                'FORMULA': '($length /(($length/((\"speed\"+\"reverse_speed\")))+(\"total_cost_semaphore\"*($length/\"L_TRAM_TEMP\"))))*60/1000',
                 'INPUT': vl,
                 'NEW_FIELD': False,
                 'OUTPUT': 'memory:'
@@ -2500,7 +2578,7 @@ class ZI_GTC:
             'START_POINTS': p_lyr,
             'STRATEGY': 1,
             'TOLERANCE': 0.1,
-            'TRAVEL_COST': str(float(self.dlg.TL_Dist_Cost.text())*60),
+            'TRAVEL_COST2': str(float(self.dlg.TL_Dist_Cost.text())/60),
             'VALUE_BACKWARD': '',
             'VALUE_BOTH': '',
             'VALUE_FORWARD': 'D',
@@ -2629,6 +2707,7 @@ class ZI_GTC:
     
     def on_click_Cancelar(self):
         """Aquesta funci� tancar la finestra."""
+        self.eliminaTaulesTemporals()
         self.dlg.close()
     
     def changeComboMetodeTreball(self):
@@ -2729,6 +2808,7 @@ class ZI_GTC:
         global schema
         global cur
         global conn
+        global versio_db
         s = QSettings()
         self.dlg.comboCapaPunts.clear()
         select = 'Selecciona connexió'
@@ -2760,6 +2840,7 @@ class ZI_GTC:
                 self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
                 self.dlg.lblEstatConn.setText('Connectat')
                 cur = conn.cursor()
+                self.detect_database_version()
                 #sql = "select f_table_name from geometry_columns where type = 'POINT' and f_table_schema ='public' order by 1"
                 sql = "select f_table_name from geometry_columns where type in ('LINESTRING','MULTILINESTRING','POINT','MULTIPOINT','POLYGON','MULTIPOLYGON') and f_table_schema ='public' order by 1"
                 cur.execute(sql)
@@ -2779,6 +2860,7 @@ class ZI_GTC:
                 print (message)
                 QMessageBox.information(None, "Error", "I am unable to connect to the database")
                 self.eliminaTaulesCalcul(Fitxer)
+                self.eliminaTaulesTemporals()
     
                 self.bar.clearWidgets()
                 self.dlg.Progres.setValue(0)
@@ -2792,7 +2874,116 @@ class ZI_GTC:
             self.dlg.lblEstatConn.setText('No connectat')
             self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
     
+    def detect_database_version(self):
+        global cur
+        global conn
+        global versio_db
+
+        cur.execute("""
+                    SELECT taula
+                    FROM config
+                    WHERE variable = 'versio';
+                    """)
+        versio_db = cur.fetchone()[0]
+
+        ''' Primer caldria trobar els noms de les taules que farem servir '''
+
+        cur.execute("""
+                    SELECT taula
+                    FROM config
+                    WHERE variable = 'parceles';
+                    """)
+        nom_parcel = cur.fetchone()[0]
+
+        cur.execute("""
+                    SELECT taula
+                    FROM config
+                    WHERE variable = 'illes';
+                    """)
+        nom_illes = cur.fetchone()[0]
+
+        cur.execute("""
+                    SELECT taula
+                    FROM config
+                    WHERE variable = 'portals';
+                    """)
+        nom_portals = cur.fetchone()[0]
+
+        if self.dlg.comboGraf.currentText() == 'Selecciona una entitat' or self.dlg.comboGraf.currentText() == '':
+            cur.execute("""
+                        SELECT taula
+                        FROM config
+                        WHERE variable = 'xarxa';
+                        """)
+            nom_xarxa = cur.fetchone()[0]
+        else:
+            nom_xarxa = self.dlg.comboGraf.currentText()
+
+        if versio_db == '1.0':
+            cur.execute(f"""
+                        DROP TABLE IF EXISTS parcel_temp;
+                        CREATE TABLE parcel_temp (
+                            id_parcel,
+                            geom,
+                            cadastral_reference
+                        ) AS SELECT "id", "geom", "utm_total" FROM "{nom_parcel}";
+                        """)
+            conn.commit()
+            cur.execute(f"""
+                        DROP TABLE IF EXISTS zone;
+                        CREATE TABLE zone (
+                            id_zone,
+                            geom,
+                            cadastral_zoning_reference
+                        ) AS SELECT "id", "geom", "D_S_I" FROM "{nom_illes}";
+                        """)
+            conn.commit()
+            cur.execute(f"""
+                        DROP TABLE IF EXISTS address;
+                        CREATE TABLE address (
+                            id_address,
+                            geom,
+                            cadastral_reference,
+                            designator
+                        ) AS SELECT id, geom, "REF_CADAST", "Carrer_Num_Bis" FROM "{nom_portals}";
+                        """)
+            conn.commit()
+            cur.execute(f"""
+                        DROP TABLE IF EXISTS stretch;
+                        CREATE TABLE stretch (
+                            id,
+                            cost,
+                            reverse_cost,
+                            semaphores,
+                            total_cost_semaphore,
+                            geom,
+                            source,
+                            target,
+                            length,
+                            direction,
+                            slope_abs,
+                            speed,
+                            reverse_speed
+                        ) AS SELECT "id", "cost", "reverse_cost", "Nombre_Semafors", "Cost_Total_Semafor_Tram", "the_geom", "source", "target", "LENGTH", "SENTIT", "PENDENT_ABS", "VELOCITAT_PS", "VELOCITAT_PS_INV" FROM "{nom_xarxa}";
+                        """)
+
     
+    def eliminaTaulesTemporals(self):
+        global versio_db
+        global cur
+        global conn
+
+        if versio_db == '1.0':
+            sql = "DROP TABLE IF EXISTS company;\n"
+            sql += "DROP TABLE IF EXISTS address;\n"
+            sql += "DROP TABLE IF EXISTS zone;\n"
+            sql += "DROP TABLE IF EXISTS parcel_temp;\n"
+            sql += "DROP TABLE IF EXISTS epigraph;\n"
+            sql += "DROP TABLE IF EXISTS stretch;\n"
+            sql += "DROP TABLE IF EXISTS stretch_vertices_pgr;\n"
+            cur.execute(sql)
+            conn.commit()
+
     def cerca_elements_Leyenda(self):
         
         if self.dlg.comboConnexio.currentText() != 'Selecciona connexió':
@@ -2878,7 +3069,7 @@ class ZI_GTC:
 
     def controlEntitatLeyenda(self,entitat):
         '''
-        Aquest metode mira si la entitat rebuda te els camps (id, geom, Nom) retorna una llista amb aquells camps que hi siguin.
+        Aquest metode mira si la entitat rebuda te els camps (id, geom, name) retorna una llista amb aquells camps que hi siguin.
         '''
         global cur
         global conn
@@ -2894,14 +3085,14 @@ class ZI_GTC:
                                 list.append("id")
                             #elif each.name() == "geom":
                             #    list.append("geom")
-                            #elif each.name() == "Nom":
-                            #    list.append("Nom")
+                            #elif each.name() == "name":
+                            #    list.append("name")
         return list     
     
     
     def controlEntitatSelPunts(self,entitat):
         '''
-        Aquest metode mira si la entitat rebuda te els camps (id, geom, Nom) retorna una llista amb aquells camps que no hi siguin.
+        Aquest metode mira si la entitat rebuda te els camps (id, geom, name) retorna una llista amb aquells camps que no hi siguin.
         '''
         global cur
         global conn
@@ -2921,9 +3112,9 @@ class ZI_GTC:
                 #elif(auxlist[x][0]=="geom"):
                 #    if "geom" not in list:
                 #        list.append("geom")
-                #elif(auxlist[x][0]=="Nom"):
-                #    if "Nom" not in list:
-                #        list.append("Nom")
+                #elif(auxlist[x][0]=="name"):
+                #    if "name" not in list:
+                #        list.append("name")
             del auxlist[:]
             
             return list
@@ -2948,18 +3139,18 @@ class ZI_GTC:
         if capa == '' or capa == 'Selecciona una entitat':
             return
             
-        errors = self.controlEntitatSelPunts(capa) #retorna una llista amb aquells camps (id, geom, Nom) que no hi siguin.
+        errors = self.controlEntitatSelPunts(capa) #retorna una llista amb aquells camps (id, geom, name) que no hi siguin.
 
         if len(errors) < 1:  # errors es una llista amb els camps que te la taula, si hi ha menys de 2, significa que falta algun camp.
-            ErrorMessage = "La capa de destí seleccionada no es valida, necessita els camps (id, Nom). Li falten:\n"
+            ErrorMessage = "La capa de destí seleccionada no es valida, necessita els camps (id, name). Li falten:\n"
             if "id" not in errors:
                 ErrorMessage+= '\n-"id"\n'
             #if "geom" not in errors:
             #    ErrorMessage+= '\n-"geom"\n'
-            #if "Nom" not in errors:
-            #    ErrorMessage+= '\n-"Nom"\n'
-            #if "NPlaces" not in errors:
-            #    ErrorMessage+= '\n-"NPlaces"\n'
+            #if "name" not in errors:
+            #    ErrorMessage+= '\n-"name"\n'
+            #if "available_places" not in errors:
+            #    ErrorMessage+= '\n-"available_places"\n'
             
             QMessageBox.information(None, "Error", ErrorMessage+'\n')
             
@@ -3002,7 +3193,8 @@ class ZI_GTC:
             if capa != "":
                 if capa != 'Selecciona una entitat':
                     if (self.grafValid(capa)):
-                        pass
+                        cur.execute(f"""SELECT pgr_createTopology('stretch', 0.0001, 'geom', 'id', 'source', 'target');""")
+                        conn.commit()
                     else:
                         QMessageBox.information(None, "Error", "El graf seleccionat no té la capa de nusos corresponent.\nEscolliu un altre.")
 
@@ -3014,6 +3206,7 @@ class ZI_GTC:
             QMessageBox.information(None, "Error", "Error Graf seleccionat")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
             self.bar.clearWidgets()
             self.dlg.Progres.setValue(0)
             self.dlg.Progres.setVisible(False)
