@@ -418,7 +418,6 @@ class ZI_GTC:
             if (self.dlg.chk_CostNusos.isChecked()):
                 """Es suma al camp 'cost' i a 'reverse_cost' el valor dels semafors sempre i quan estigui la opci� marcada"""
                 sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"cost\"+(\"total_cost_semaphore\"), \"reverse_cost\"=\"reverse_cost\"+(\"total_cost_semaphore\");\n"
-        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -465,7 +464,6 @@ class ZI_GTC:
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     side CHAR;\n"
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     fraction FLOAT;\n"
             sql_1+="ALTER TABLE punts_interes_tmp ADD COLUMN     newPoint geometry;\n"
-            print (sql_1)
             cur.execute(sql_1)
             conn.commit()
         except Exception as ex:
@@ -494,7 +492,6 @@ class ZI_GTC:
         sql_1="UPDATE \"punts_interes_tmp\" set \"edge_id\"=tram_proper.\"tram_id\" from (SELECT distinct on(Poi.pid) Poi.pid As Punt_id,Sg.id as Tram_id, ST_Distance(Sg.geom,Poi.geom)  as dist FROM \"Xarxa_Graf\" as Sg,\"punts_interes_tmp\" AS Poi ORDER BY  Poi.pid,ST_Distance(Sg.geom,Poi.geom),Sg.id) tram_proper where \"punts_interes_tmp\".\"pid\"=tram_proper.\"punt_id\";\n"
         """Es calcula la fraccio del tram que on esta situat la projecci� del punt d'interes"""
         sql_1+="UPDATE \"punts_interes_tmp\" SET fraction = ST_LineLocatePoint(e.geom, \"punts_interes_tmp\".geom),newPoint = ST_LineInterpolatePoint(e.geom, ST_LineLocatePoint(e.geom, \"punts_interes_tmp\".geom)) FROM \"Xarxa_Graf\" AS e WHERE \"punts_interes_tmp\".\"edge_id\" = e.id;\n"
-        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -553,7 +550,6 @@ class ZI_GTC:
         else:
             """Creació de la taula 'tbl_punts_finsl_tmp' on es tindrà tots els nodes de la xarxa que son a dins del radi fix d'acci� indicat"""
             sql_1+="CREATE local temporary TABLE tbl_punts_finals_tmp AS(SELECT node,agg_cost,start_vid FROM pgr_withPointsDD('SELECT id, source, target, cost, reverse_cost FROM \"Xarxa_Graf\" ORDER BY \"Xarxa_Graf\".id','SELECT pid, edge_id, fraction, side from \"punts_interes_tmp\"',array(select \"pid\"*(-1) from \"punts_interes_tmp\"),"+self.dlg.TL_Dist_Cost.text()+",driving_side := 'b',details := false));\n"
-        print (sql_1)
         
         try:
             cur.execute(sql_1)
@@ -591,7 +587,6 @@ class ZI_GTC:
         else:
             """Creació de la taula 'geo_punts_finals_tmp' on estan tots els nodes de la xarxa que son a dins del radi fix amb la geometria inclosa"""
             sql_1+="CREATE local temporary TABLE geo_punts_finals_tmp as (select \"" + XarxaCarrers + "_vertices_pgr\".*,\"tbl_punts_finals_tmp\".\"agg_cost\", \"tbl_punts_finals_tmp\".\"start_vid\", "+self.dlg.TL_Dist_Cost.text()+" from \"" + XarxaCarrers + "_vertices_pgr\",\"tbl_punts_finals_tmp\" where \"" + XarxaCarrers + "_vertices_pgr\".\"id\" =\"tbl_punts_finals_tmp\".\"node\" order by \"tbl_punts_finals_tmp\".\"start_vid\" desc,\"tbl_punts_finals_tmp\".\"agg_cost\");\n"
-        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -651,7 +646,6 @@ class ZI_GTC:
                 else:
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
                     sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
-        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -718,7 +712,6 @@ class ZI_GTC:
         self.dlg.Progres.setValue(45)
         QApplication.processEvents()
 
-        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -979,7 +972,6 @@ class ZI_GTC:
 #       *****************************************************************************************************************
         """S'afegeixen els trams inicials de cada graf per modificarlos posteriorment"""
         sql_1="insert into \"fraccio_trams_raw\" (select SX.\"geom\",PI.\"pid\" as punt_id,SX.\"id\"as id_tram,999 as fraccio,SX.\"source\" as node,PI.\"fraction\" as fraccio_inicial,SX.\"cost\",SX.\"reverse_cost\" from \"Xarxa_Graf\" SX inner join (Select \"edge_id\",\"pid\",\"fraction\" from \"punts_interes_tmp\") PI on SX.\"id\"=PI.\"edge_id\");\n"
-        print (sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -1014,7 +1006,6 @@ class ZI_GTC:
             if (self.dlg.RB_campTaula.isChecked()):
                 """En el cas de radi variable, s'actualiza el camp radi inicial dels trams inicials """
                 sql_1="update \"fraccio_trams_raw\" set \"radi_inic\"=\"tbl_punts_finals_tmp\".\"init_radi\" from \"tbl_punts_finals_tmp\" where \"punt_id\"*-1=\"start_vid\" and \"fraccio\"=999"
-                print (sql_1)
                 try:
                     cur.execute(sql_1)
                     conn.commit()
@@ -1061,7 +1052,6 @@ class ZI_GTC:
             if (self.dlg.RB_campTaula.isChecked()):
                 """En el cas de radi variable, s'actualiza el camp radi inicial dels trams inicials """
                 sql_1="update \"fraccio_trams_raw\" set \"radi_inic\"=\"tbl_punts_finals_tmp\".\"init_radi\" from \"tbl_punts_finals_tmp\" where \"punt_id\"*-1=\"start_vid\" and \"fraccio\"=999"
-                print (sql_1)
                 try:
                     cur.execute(sql_1)
                     conn.commit()
@@ -1116,7 +1106,6 @@ class ZI_GTC:
                 sql_1+=") as geom, FT.\"punt_id\" "
                 sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) TOT GROUP BY TOT.\"punt_id\") final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
-        print(sql_1)
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -1786,7 +1775,6 @@ class ZI_GTC:
                     vlayer=result_buffer['OUTPUT']
                     #vlayer=punts_lyr
                     sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
-                    print(vlayer.crs())
                     error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
                     if error[0] != 0:
                         iface.messageBar().pushMessage(u'Error', error[1])
@@ -1834,7 +1822,6 @@ class ZI_GTC:
                     titol2='Cobertura de '
                     titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
                     vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
-                    print(vlayer.crs())
                     QApplication.processEvents()
                     if vlayer.isValid():
                         Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -2811,6 +2798,7 @@ class ZI_GTC:
         global versio_db
         s = QSettings()
         self.dlg.comboCapaPunts.clear()
+        self.dlg.comboGraf.clear()
         select = 'Selecciona connexió'
         nom_conn=self.dlg.comboConnexio.currentText()
         if nom_conn != select:
@@ -2966,6 +2954,9 @@ class ZI_GTC:
                             reverse_speed
                         ) AS SELECT "id", "cost", "reverse_cost", "Nombre_Semafors", "Cost_Total_Semafor_Tram", "the_geom", "source", "target", "LENGTH", "SENTIT", "PENDENT_ABS", "VELOCITAT_PS", "VELOCITAT_PS_INV" FROM "{nom_xarxa}";
                         """)
+            conn.commit()
+            cur.execute(f"""SELECT pgr_createTopology('stretch', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
+            conn.commit()
 
     
     def eliminaTaulesTemporals(self):
@@ -3193,8 +3184,30 @@ class ZI_GTC:
             if capa != "":
                 if capa != 'Selecciona una entitat':
                     if (self.grafValid(capa)):
-                        cur.execute(f"""SELECT pgr_createTopology('stretch', 0.0001, 'geom', 'id', 'source', 'target');""")
-                        conn.commit()
+                        if versio_db == '1.0':
+                            cur.execute(f"""
+                            DROP TABLE IF EXISTS stretch;
+                            CREATE TABLE stretch (
+                                id,
+                                cost,
+                                reverse_cost,
+                                semaphores,
+                                total_cost_semaphore,
+                                geom,
+                                source,
+                                target,
+                                length,
+                                direction,
+                                slope_abs,
+                                speed,
+                                reverse_speed
+                            ) AS SELECT "id", "cost", "reverse_cost", "Nombre_Semafors", "Cost_Total_Semafor_Tram", "the_geom", "source", "target", "LENGTH", "SENTIT", "PENDENT_ABS", "VELOCITAT_PS", "VELOCITAT_PS_INV" FROM "{capa}";
+                            """)
+                            conn.commit()
+                            cur.execute(f"""SELECT pgr_createTopology('stretch', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
+                            conn.commit()
+                        else:
+                            pass
                     else:
                         QMessageBox.information(None, "Error", "El graf seleccionat no té la capa de nusos corresponent.\nEscolliu un altre.")
 
