@@ -29,7 +29,7 @@ cmd /c "pyrcc5 -o resources.py resources.qrc"
 cmd /c "pb_tool deploy"
 @echo off
 cd ..
-cmd /c "python compress.py ./%directory% .\ZZ_DEPLOY/%directory%.zip"
+cmd /c "python compress.py .\ZZ_DEPLOY/%directory% .\ZZ_DEPLOY/%directory%.zip"
 cd ZZ_DEPLOY
 rem erase %directory%.ZIP
 erase %directory_old%\metadata.txt

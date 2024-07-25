@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.240412"
+Versio_modul="V_Q3.240725"
 geometria=""
 TEMPORARY_PATH=""
 tipus_entitat_punt=False
@@ -1172,7 +1172,7 @@ class ZI_GTC:
 #       *****************************************************************************************************************
         """ Es fa la uni� de tots els trams des del servidor POSTGRES dins de la taula Graf_utilitzat_(data)"""
         sql_1="drop table if exists Graf_utilitzat_"+Fitxer+";\n"
-        sql_1+="CREATE local temporary TABLE Graf_utilitzat_"+Fitxer+" AS (Select ST_Union(TOT.geom) geom, TOT.\"punt_id\" as id from (select geom,punt_id,radi_inic from fraccio_trams_tmp) TOT group by TOT.\"punt_id\");\n"
+        sql_1+="CREATE TABLE Graf_utilitzat_"+Fitxer+" AS (Select ST_Union(TOT.geom) geom, TOT.\"punt_id\" as id from (select geom,punt_id,radi_inic from fraccio_trams_tmp) TOT group by TOT.\"punt_id\");\n"
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -1798,7 +1798,10 @@ class ZI_GTC:
                         sql_total="select distinct(ILLES_RESUM.\"id_zone\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"zone\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"zone\".\"cadastral_zoning_reference\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                     if (self.dlg.bt_Parcel.isChecked()):
                         """Si s'ha seleccionat PARCELES"""
-                        sql_total="select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel_temp\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel_temp\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
+                        if versio_db == '1.0':
+                            sql_total="select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel_temp\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel_temp\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
+                        else:
+                            sql_total="select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                         
                     if (self.dlg.bt_Portals.isChecked()):
                         """Si s'ha seleccionat PORTALS"""

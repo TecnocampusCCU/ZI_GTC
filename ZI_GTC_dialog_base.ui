@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>685</width>
+    <width>885</width>
     <height>340</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>685</width>
+    <width>1000</width>
     <height>340</height>
    </size>
   </property>
@@ -1734,7 +1734,7 @@ border-color: rgb(0, 0, 0);</string>
   <widget class="QPushButton" name="bt_cancelar">
    <property name="geometry">
     <rect>
-     <x>600</x>
+     <x>480</x>
      <y>302</y>
      <width>75</width>
      <height>30</height>
@@ -1862,6 +1862,60 @@ border-color: rgb(0, 0, 0);</string>
     </property>
    </widget>
   </widget>
+  <widget class="QPushButton" name="bt_info">
+   <property name="geometry">
+    <rect>
+     <x>630</x>
+     <y>310</y>
+     <width>51</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+   <property name="text">
+    <string>info</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>710</x>
+     <y>100</y>
+     <width>151</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap>logo-diba.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>690</x>
+     <y>40</y>
+     <width>191</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap>TCM_transp.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+  </widget>
   <zorder>layoutWidget</zorder>
   <zorder>groupBox_6</zorder>
   <zorder>comboConnexio</zorder>
@@ -1877,7 +1931,11 @@ border-color: rgb(0, 0, 0);</string>
   <zorder>bt_OK</zorder>
   <zorder>bt_cancelar</zorder>
   <zorder>groupBox_8</zorder>
+  <zorder>bt_info</zorder>
+  <zorder>label</zorder>
+  <zorder>label_3</zorder>
  </widget>
- <resources/>
+ <resources>
+ </resources>
  <connections/>
 </ui>
