@@ -22,14 +22,12 @@
  ***************************************************************************/
 """
 
-import sys
 import os
 import processing
 from PyQt5.QtCore import * #QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import * #QIcon
-from PyQt5 import QtGui
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QAction,QMessageBox,QTableWidgetItem, QApplication,QSizePolicy,QGridLayout,QDialogButtonBox,QFileDialog,QProgressBar,QColorDialog,QToolBar
+from PyQt5.QtWidgets import QAction,QMessageBox, QApplication,QSizePolicy,QGridLayout,QDialogButtonBox,QFileDialog,QProgressBar,QColorDialog,QToolBar
 from .ZI_GTC_dialog import ZI_GTCDialog
 from qgis.core import QgsMapLayer,QgsWkbTypes
 from qgis.core import QgsDataSourceUri
@@ -38,10 +36,7 @@ from qgis.core import QgsVectorFileWriter
 from qgis.core import QgsGraduatedSymbolRenderer
 from qgis.core import QgsGradientColorRamp
 from qgis.core import QgsProject
-from qgis.core import QgsRendererRange
-from qgis.core import QgsSymbol
 from qgis.core import QgsFillSymbol
-from qgis.core import QgsRandomColorRamp
 from qgis.core import QgsRenderContext
 from qgis.core import QgsRendererRangeLabelFormat
 from qgis.core import QgsProject
@@ -51,7 +46,7 @@ from qgis.core import QgsGeometry
 from qgis.utils import iface
 import qgis.utils
 #from PyQt5.QtGui import QProgressBar
-from qgis.core import QgsProcessingFeedback, Qgis,QgsCoordinateReferenceSystem,QgsVectorLayerExporter
+from qgis.core import Qgis,QgsCoordinateReferenceSystem,QgsVectorLayerExporter
 from qgis.gui import QgsMessageBar
 from PyQt5.QtSql import *
 from PyQt5.QtCore import *
@@ -60,13 +55,11 @@ from os.path import expanduser
 import datetime
 import time
 #import qgis
-import unicodedata
 # Initialize Qt resources from file resources.py
 #import resources
 # Import the code for the dialog
 from .ZI_GTC_dialog import ZI_GTCDialog
 import psycopg2
-from email.header import UTF8
 import os.path
 #from macpath import curdir
 import collections
@@ -88,7 +81,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.240725"
+Versio_modul="V_Q3.240912"
 geometria=""
 TEMPORARY_PATH=""
 tipus_entitat_punt=False
@@ -322,7 +315,10 @@ class ZI_GTC:
         nom = self.dlg.comboGraf.currentText()
         global cur
         global conn
-        sql = "select exists (select 1 from geometry_columns where f_table_name = '" + taula + "_vertices_pgr')"
+        if taula != 'stretch':
+            sql = "select exists (select 1 from geometry_columns where f_table_name = '" + taula + "_vertices_pgr')"
+        else:
+            sql = "select exists (select 1 from geometry_columns where f_table_name = '" + taula + f"_{Fitxer}_vertices_pgr')"
         cur.execute(sql)
         camp = cur.fetchall()
         return camp[0][0]
@@ -400,7 +396,7 @@ class ZI_GTC:
 #       INICI CREACIO DE LA TAULA 'XARXA_GRAF' I PREPARACIO DELS CAMPS COST I REVERSE_COST
 #       *****************************************************************************************************************
         #XarxaCarrers = self.dlg.comboGraf.currentText()
-        XarxaCarrers = 'stretch'
+        XarxaCarrers = f'stretch_{Fitxer}'
         sql_1="DROP TABLE IF EXISTS \"Xarxa_Graf\";\n"
         """ Es fa una copia de la taula que cont� el graf i s'afegeixen els camps cost i reverse_cost en funci� del que es necessiti, es crear� taula local temporal per evitar problemes de concurrencia"""
         sql_1+="CREATE local temporary TABLE \"Xarxa_Graf\" as (SELECT * FROM \"" + XarxaCarrers + "\");\n"
@@ -1719,7 +1715,7 @@ class ZI_GTC:
 #               *****************************************************************************************************************
                 if (tipus_entitat_punt==True):
                    # XarxaCarrers = self.dlg.comboGraf.currentText()
-                    XarxaCarrers = 'stretch'
+                    XarxaCarrers = f'stretch_{Fitxer}'
                     if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
                         sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
                         buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
@@ -1789,23 +1785,23 @@ class ZI_GTC:
                 self.dlg.Progres.setValue(60)
                 QApplication.processEvents()
                 sql_ZI=sql_buffer 
-                sql_PART1_ZI="SELECT row_number() OVER () AS \"id\",ILL.\"cadastral_zoning_reference\",ILL.\"geom\",RS.\"Habitants\" FROM (select \"zone\".\"cadastral_zoning_reference\",\"zone\".\"geom\" from \"zone\" where \"zone\".\"id_zone\" NOT IN (select \"zone\".\"id_zone\" from \"zone\" INNER JOIN ("
-                sql_TOTAL_ZI=sql_PART1_ZI+sql_ZI+") TOT2 on ST_Intersects(\"zone\".\"geom\",TOT2.\"geom\"))) ILL JOIN \"Illes_Resum_"+Fitxer+"\" RS on (ILL.\"cadastral_zoning_reference\" = RS.\"ILLES_Codificades\")"
+                sql_PART1_ZI=f"SELECT row_number() OVER () AS \"id\",ILL.\"cadastral_zoning_reference\",ILL.\"geom\",RS.\"Habitants\" FROM (select \"zone_{Fitxer}\".\"cadastral_zoning_reference\",\"zone_{Fitxer}\".\"geom\" from \"zone_{Fitxer}\" where \"zone_{Fitxer}\".\"id_zone\" NOT IN (select \"zone_{Fitxer}\".\"id_zone\" from \"zone_{Fitxer}\" INNER JOIN ("
+                sql_TOTAL_ZI=sql_PART1_ZI+sql_ZI+f") TOT2 on ST_Intersects(\"zone_{Fitxer}\".\"geom\",TOT2.\"geom\"))) ILL JOIN \"Illes_Resum_"+Fitxer+"\" RS on (ILL.\"cadastral_zoning_reference\" = RS.\"ILLES_Codificades\")"
                 if (self.dlg.chk_poblacio.isChecked()):
                     if (self.dlg.bt_ILLES.isChecked()):
                         """Si s'ha seleccionat ILLES"""
                         #sql_total="select row_number() over() as id_sql, ILLES_RESUM.\"id\",ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"ILLES\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"ILLES\".\"D_S_I\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_diss_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_diss_"+Fitxer+"\".\"geom\",1)=TRUE"
-                        sql_total="select distinct(ILLES_RESUM.\"id_zone\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"zone\" INNER JOIN \"Illes_Resum_"+Fitxer+"\" ON \"zone\".\"cadastral_zoning_reference\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
+                        sql_total=f"select distinct(ILLES_RESUM.\"id_zone\"),ILLES_RESUM.\"geom\",ILLES_RESUM.\"Habitants\" from (select * from \"zone_{Fitxer}\" INNER JOIN \"Illes_Resum_"+Fitxer+f"\" ON \"zone_{Fitxer}\".\"cadastral_zoning_reference\"=\"Illes_Resum_"+Fitxer+"\".\"ILLES_Codificades\") ILLES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(ILLES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                     if (self.dlg.bt_Parcel.isChecked()):
                         """Si s'ha seleccionat PARCELES"""
                         if versio_db == '1.0':
-                            sql_total="select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel_temp\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel_temp\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
+                            sql_total=f"select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel_temp_{Fitxer}\" INNER JOIN \"Resum_Temp_"+Fitxer+f"\" ON \"parcel_temp_{Fitxer}\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                         else:
                             sql_total="select distinct(PARCELES_RESUM.\"id_parcel\"),PARCELES_RESUM.\"geom\",PARCELES_RESUM.\"Habitants\" from (select * from \"parcel\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"parcel\".\"cadastral_reference\"=\"Resum_Temp_"+Fitxer+"\".\"Parcela\") PARCELES_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PARCELES_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                         
                     if (self.dlg.bt_Portals.isChecked()):
                         """Si s'ha seleccionat PORTALS"""
-                        sql_total="select distinct(PORTALS_RESUM.\"id_address\"),PORTALS_RESUM.\"geom\",PORTALS_RESUM.\"Habitants\" from (select * from \"address\" INNER JOIN \"Resum_Temp_"+Fitxer+"\" ON \"address\".\"designator\"=\"Resum_Temp_"+Fitxer+"\".\"NPolicia\") PORTALS_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PORTALS_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
+                        sql_total=f"select distinct(PORTALS_RESUM.\"id_address\"),PORTALS_RESUM.\"geom\",PORTALS_RESUM.\"Habitants\" from (select * from \"address_{Fitxer}\" INNER JOIN \"Resum_Temp_"+Fitxer+f"\" ON \"address_{Fitxer}\".\"designator\"=\"Resum_Temp_"+Fitxer+"\".\"NPolicia\") PORTALS_RESUM,\"buffer_final_"+Fitxer+"\" where ST_DWithin(PORTALS_RESUM.\"geom\",\"buffer_final_"+Fitxer+"\".\"geom\",1)=TRUE"
                         
     #               *****************************************************************************************************************
     #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
@@ -2912,8 +2908,8 @@ class ZI_GTC:
 
         if versio_db == '1.0':
             cur.execute(f"""
-                        DROP TABLE IF EXISTS parcel_temp;
-                        CREATE TABLE parcel_temp (
+                        DROP TABLE IF EXISTS parcel_temp_{Fitxer};
+                        CREATE TABLE parcel_temp_{Fitxer} (
                             id_parcel,
                             geom,
                             cadastral_reference
@@ -2921,8 +2917,8 @@ class ZI_GTC:
                         """)
             conn.commit()
             cur.execute(f"""
-                        DROP TABLE IF EXISTS zone;
-                        CREATE TABLE zone (
+                        DROP TABLE IF EXISTS zone_{Fitxer};
+                        CREATE TABLE zone_{Fitxer} (
                             id_zone,
                             geom,
                             cadastral_zoning_reference
@@ -2930,8 +2926,8 @@ class ZI_GTC:
                         """)
             conn.commit()
             cur.execute(f"""
-                        DROP TABLE IF EXISTS address;
-                        CREATE TABLE address (
+                        DROP TABLE IF EXISTS address_{Fitxer};
+                        CREATE TABLE address_{Fitxer} (
                             id_address,
                             geom,
                             cadastral_reference,
@@ -2940,8 +2936,8 @@ class ZI_GTC:
                         """)
             conn.commit()
             cur.execute(f"""
-                        DROP TABLE IF EXISTS stretch;
-                        CREATE TABLE stretch (
+                        DROP TABLE IF EXISTS stretch_{Fitxer};
+                        CREATE TABLE stretch_{Fitxer} (
                             id,
                             cost,
                             reverse_cost,
@@ -2958,25 +2954,36 @@ class ZI_GTC:
                         ) AS SELECT "id", "cost", "reverse_cost", "Nombre_Semafors", "Cost_Total_Semafor_Tram", "the_geom", "source", "target", "LENGTH", "SENTIT", "PENDENT_ABS", "VELOCITAT_PS", "VELOCITAT_PS_INV" FROM "{nom_xarxa}";
                         """)
             conn.commit()
-            cur.execute(f"""SELECT pgr_createTopology('stretch', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
+            cur.execute(f"""SELECT pgr_createTopology('stretch_{Fitxer}', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
+            conn.commit()
+        else:
+            cur.execute(f"""DROP TABLE IF EXISTS parcel_temp_{Fitxer};
+                            CREATE TABLE parcel_temp_{Fitxer} AS SELECT * FROM parcel;""")
+            conn.commit()
+            cur.execute(f"""DROP TABLE IF EXISTS zone_{Fitxer};
+                            CREATE TABLE zone_{Fitxer} AS SELECT * FROM zone;""")
+            conn.commit()
+            cur.execute(f"""DROP TABLE IF EXISTS address_{Fitxer};
+                            CREATE TABLE address_{Fitxer} AS SELECT * FROM address;""")
+            conn.commit()
+            cur.execute(f"""DROP TABLE IF EXISTS stretch_{Fitxer};
+                            CREATE TABLE stretch_{Fitxer} AS SELECT * FROM stretch;""")
+            conn.commit()
+            cur.execute(f"""SELECT pgr_createTopology('stretch_{Fitxer}', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
             conn.commit()
 
-    
     def eliminaTaulesTemporals(self):
         global versio_db
         global cur
         global conn
 
-        if versio_db == '1.0':
-            sql = "DROP TABLE IF EXISTS company;\n"
-            sql += "DROP TABLE IF EXISTS address;\n"
-            sql += "DROP TABLE IF EXISTS zone;\n"
-            sql += "DROP TABLE IF EXISTS parcel_temp;\n"
-            sql += "DROP TABLE IF EXISTS epigraph;\n"
-            sql += "DROP TABLE IF EXISTS stretch;\n"
-            sql += "DROP TABLE IF EXISTS stretch_vertices_pgr;\n"
-            cur.execute(sql)
-            conn.commit()
+        sql = f"DROP TABLE IF EXISTS address_{Fitxer};\n"
+        sql += f"DROP TABLE IF EXISTS zone_{Fitxer};\n"
+        sql += f"DROP TABLE IF EXISTS parcel_temp_{Fitxer};\n"
+        sql += f"DROP TABLE IF EXISTS stretch_{Fitxer};\n"
+        sql += f"DROP TABLE IF EXISTS stretch_{Fitxer}_vertices_pgr;\n"
+        cur.execute(sql)
+        conn.commit()
 
     def cerca_elements_Leyenda(self):
         
@@ -3189,8 +3196,8 @@ class ZI_GTC:
                     if (self.grafValid(capa)):
                         if versio_db == '1.0':
                             cur.execute(f"""
-                            DROP TABLE IF EXISTS stretch;
-                            CREATE TABLE stretch (
+                            DROP TABLE IF EXISTS stretch_{Fitxer};
+                            CREATE TABLE stretch_{Fitxer} (
                                 id,
                                 cost,
                                 reverse_cost,
@@ -3207,7 +3214,7 @@ class ZI_GTC:
                             ) AS SELECT "id", "cost", "reverse_cost", "Nombre_Semafors", "Cost_Total_Semafor_Tram", "the_geom", "source", "target", "LENGTH", "SENTIT", "PENDENT_ABS", "VELOCITAT_PS", "VELOCITAT_PS_INV" FROM "{capa}";
                             """)
                             conn.commit()
-                            cur.execute(f"""SELECT pgr_createTopology('stretch', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
+                            cur.execute(f"""SELECT pgr_createTopology('stretch_{Fitxer}', 0.0001, 'geom', 'id', 'source', 'target', clean:='true');""")
                             conn.commit()
                         else:
                             pass
