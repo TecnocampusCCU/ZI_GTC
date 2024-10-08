@@ -43,6 +43,9 @@ from qgis.core import QgsProject
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsFeature
 from qgis.core import QgsGeometry
+from qgis.core import QgsCoordinateTransform
+from qgis.core import QgsField
+from qgis.core import QgsPointXY
 from qgis.utils import iface
 import qgis.utils
 #from PyQt5.QtGui import QProgressBar
@@ -63,6 +66,8 @@ import psycopg2
 import os.path
 #from macpath import curdir
 import collections
+import requests
+import json
 """
 Variables globals per a la connexio
 i per guardar el color dels botons
@@ -81,11 +86,14 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.240912"
+Versio_modul="V_Q3.241007"
+connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
 tipus_entitat_punt=False
 versio_db = ""
+
+valhalla_base_url = "https://ccuserver.tecnocampus.cat/"
 
 class ZI_GTC:
     """QGIS Plugin Implementation."""
@@ -122,9 +130,12 @@ class ZI_GTC:
         self.dlg = ZI_GTCDialog()
         self.dlg.bt_cancelar.clicked.connect(self.on_click_Cancelar)
         self.dlg.bt_OK.clicked.connect(self.on_click_OK)
-        self.dlg.comboMetodeTreball.currentIndexChanged.connect(self.changeComboMetodeTreball)
-        self.dlg.color.clicked.connect(self.on_click_Color)
-        self.dlg.color_2.clicked.connect(self.on_click_ColorArea)
+        self.dlg.comboMetodeTreball_CCU.currentIndexChanged.connect(self.changeComboMetodeTreball_CCU)
+        self.dlg.comboMetodeTreball_Valhalla.currentIndexChanged.connect(self.changeComboMetodeTreball_Valhalla)
+        self.dlg.color_CCU.clicked.connect(self.on_click_Color_CCU)
+        self.dlg.color_Valhalla.clicked.connect(self.on_click_Color_Valhalla)
+        self.dlg.color_CCU.clicked.connect(self.on_click_ColorArea_CCU)
+        self.dlg.color_Valhalla.clicked.connect(self.on_click_ColorArea_Valhalla)
         self.dlg.colorArea.clicked.connect(self.on_click_ColorArea)
         self.dlg.checkBoxDibuix.stateChanged.connect(self.on_click_cbDibuix)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
@@ -135,6 +146,7 @@ class ZI_GTC:
         self.dlg.comboGraf.currentIndexChanged.connect(self.on_Change_ComboGraf)
         self.dlg.chk_poblacio.stateChanged.connect(self.on_click_CB_poblacio)
         self.dlg.RB_campFix.toggled.connect(self.on_click_campFix)
+        self.dlg.RB_campFix_Valhalla.toggled.connect(self.on_click_campFix_Valhalla)
         self.dlg.RB_campTaula.toggled.connect(self.on_click_campTaula)
         self.dlg.RB_Graf.toggled.connect(self.on_click_Graf)
         self.dlg.RB_RadiCirc.toggled.connect(self.on_click_RadiCirc)
@@ -168,6 +180,9 @@ class ZI_GTC:
         self.dlg.layout().addWidget(self.bar, 0, 0,1,1)
         #self.dlg.bt_ReloadLeyenda.setIcon(QtGui.QIcon('D:\Eclipse\QGISV3\ZI_GTC\reloadIcon.png'))
         #self.dlg.bt_ReloadLeyenda.setIconSize(QtCore.QSize(16,16))
+
+        self.dlg.rejected.connect(self.on_click_Cancelar)
+
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
@@ -283,32 +298,43 @@ class ZI_GTC:
         global tipus_entitat_punt
         tipus_entitat_punt=True
         self.dlg.groupBox_2.setVisible(tipus_entitat_punt)
-        self.dlg.groupBox_3.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_Graf.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_Graf_Valhalla.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
-        self.dlg.groupBox_6.setVisible(not(tipus_entitat_punt))
+        self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
+        self.dlg.groupBox_Circular_Valhalla.setVisible(not(tipus_entitat_punt))
            
     def on_click_RadiCirc(self,enabled):
         global tipus_entitat_punt
         tipus_entitat_punt=False
         self.dlg.groupBox_2.setVisible(tipus_entitat_punt)
-        self.dlg.groupBox_3.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_Graf.setVisible(tipus_entitat_punt)
+        self.dlg.groupBox_Graf_Valhalla.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
-        self.dlg.groupBox_6.setVisible(not(tipus_entitat_punt))
+        self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
+        self.dlg.groupBox_Circular_Valhalla.setVisible(not(tipus_entitat_punt))
             
 
     def on_click_campTaula(self,enabled):
         """Aquesta funci� activa o desactiva el camp de la taula"""
         if enabled:
-            self.dlg.comboCapaPunts.setEnabled(True)
+            self.dlg.comboCapaPunts_CCU.setEnabled(True)
         else:
-            self.dlg.comboCapaPunts.setEnabled(False)
+            self.dlg.comboCapaPunts_CCU.setEnabled(False)
             
     def on_click_campFix(self,enabled):
         """Aquesta funci� activa o desactiva el camp fix"""
         if enabled:
-            self.dlg.TL_Dist_Cost.setEnabled(True)
+            self.dlg.TL_Dist_Cost_CCU.setEnabled(True)
         else:
-            self.dlg.TL_Dist_Cost.setEnabled(False)
+            self.dlg.TL_Dist_Cost_CCU.setEnabled(False)
+
+    def on_click_campFix_Valhalla(self,enabled):
+        """Aquesta funci� activa o desactiva el camp fix"""
+        if enabled:
+            self.dlg.TL_Dist_Cost_Valhalla.setEnabled(True)
+        else:
+            self.dlg.TL_Dist_Cost_Valhalla.setEnabled(False)
         
     def grafValid(self, taula):
         """Aquesta funci� comprova si la taula que li hem passat t� la seva capa de graf corresponent"""
@@ -350,11 +376,11 @@ class ZI_GTC:
             errors.append('No hi ha cap capa de xarxa seleccionada')
             #print(tipus_entitat_punt)
         if self.dlg.RB_campTaula.isChecked():
-            if self.dlg.comboCapaPunts.currentText() == 'Selecciona un camp' or self.dlg.comboCapaPunts.currentText() == '':
+            if self.dlg.comboCapaPunts_CCU.currentText() == 'Selecciona un camp' or self.dlg.comboCapaPunts_CCU.currentText() == '':
                 errors.append('No hi ha seleccionada cap camp seleccionat')
         if self.dlg.RB_campFix.isChecked():
             try:
-                numero = float(self.dlg.TL_Dist_Cost.text())
+                numero = float(self.dlg.TL_Dist_Cost_CCU.text())
                 if numero < 0:
                     errors.append('El número fix del métode de treball no pot ser negatiu')
             except:
@@ -400,18 +426,18 @@ class ZI_GTC:
         sql_1="DROP TABLE IF EXISTS \"Xarxa_Graf\";\n"
         """ Es fa una copia de la taula que cont� el graf i s'afegeixen els camps cost i reverse_cost en funci� del que es necessiti, es crear� taula local temporal per evitar problemes de concurrencia"""
         sql_1+="CREATE local temporary TABLE \"Xarxa_Graf\" as (SELECT * FROM \"" + XarxaCarrers + "\");\n"
-        if (self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+        if (self.dlg.comboMetodeTreball_CCU.currentText()=="Distancia"):
             """S'aplica com a cost tant directe com invers el valor de la longitud del segment"""
             sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=st_length(\"geom\"), \"reverse_cost\"=st_length(\"geom\");\n"
         else:
-            if (self.dlg.chk_CostInvers.isChecked()):
+            if (self.dlg.chk_CostInvers_CCU.isChecked()):
                 """S'aplica com a 'cost' el valor del camp 'cost directe', i a 'reverse_cost' el valor del camp 'cost_invers"""
                 #sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"Cost_Directe\", \"reverse_cost\"=\"Cost_Invers\";\n"
             else:
                 """S'aplica com a 'cost' i 'reverse_cost' el valor del camp 'cost directe'"""
                 sql_1+="UPDATE \"Xarxa_Graf\" set \"reverse_cost\"=\"cost\";\n"
                 #sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"Cost_Directe\", \"reverse_cost\"=\"Cost_Directe\";\n"
-            if (self.dlg.chk_CostNusos.isChecked()):
+            if (self.dlg.chk_CostNusos_CCU.isChecked()):
                 """Es suma al camp 'cost' i a 'reverse_cost' el valor dels semafors sempre i quan estigui la opci� marcada"""
                 sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"cost\"+(\"total_cost_semaphore\"), \"reverse_cost\"=\"reverse_cost\"+(\"total_cost_semaphore\");\n"
         try:
@@ -448,7 +474,7 @@ class ZI_GTC:
             sql_1="drop table if exists punts_interes_tmp;\n"
             if self.dlg.RB_campTaula.isChecked():
                 """Es crea la taula 'punts_interes_tmp' seleccionant el centroide de la entitat seleccionada utilitzant com a radi el valor del camp seleccionat"""
-                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") geom,tmp.\"id\"as pid,tmp.\""+str(self.dlg.comboCapaPunts.currentText())+"\" from ("+sql_buff+") tmp);\n"
+                sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") geom,tmp.\"id\"as pid,tmp.\""+str(self.dlg.comboCapaPunts_CCU.currentText())+"\" from ("+sql_buff+") tmp);\n"
             else:
                 """Es crea la taula punts_interes_tmp seleccionant el centroide de la entitat seleccionada, utilizant un radi fix"""
                 sql_1+="CREATE local temporary TABLE punts_interes_tmp as (SELECT ST_Centroid(tmp.\""+geometria+"\") geom,tmp.\"id\" as pid from ("+sql_buff+") tmp);\n"
@@ -518,7 +544,7 @@ class ZI_GTC:
         if self.dlg.RB_campTaula.isChecked():
             """ Es posa a dins d'una variable 'Radi_Variable' tots els valors de radis de cada punt d'interes"""
             try:
-                cur.execute("select \"pid\",\""+str(self.dlg.comboCapaPunts.currentText())+"\" from \"punts_interes_tmp\" order by \"pid\" asc ;\n")
+                cur.execute("select \"pid\",\""+str(self.dlg.comboCapaPunts_CCU.currentText())+"\" from \"punts_interes_tmp\" order by \"pid\" asc ;\n")
                 Radi_Variable = cur.fetchall()
             except Exception as ex:
                 print ("Error SELECT punts_interes_tmp")
@@ -545,7 +571,7 @@ class ZI_GTC:
             
         else:
             """Creació de la taula 'tbl_punts_finsl_tmp' on es tindrà tots els nodes de la xarxa que son a dins del radi fix d'acci� indicat"""
-            sql_1+="CREATE local temporary TABLE tbl_punts_finals_tmp AS(SELECT node,agg_cost,start_vid FROM pgr_withPointsDD('SELECT id, source, target, cost, reverse_cost FROM \"Xarxa_Graf\" ORDER BY \"Xarxa_Graf\".id','SELECT pid, edge_id, fraction, side from \"punts_interes_tmp\"',array(select \"pid\"*(-1) from \"punts_interes_tmp\"),"+self.dlg.TL_Dist_Cost.text()+",driving_side := 'b',details := false));\n"
+            sql_1+="CREATE local temporary TABLE tbl_punts_finals_tmp AS(SELECT node,agg_cost,start_vid FROM pgr_withPointsDD('SELECT id, source, target, cost, reverse_cost FROM \"Xarxa_Graf\" ORDER BY \"Xarxa_Graf\".id','SELECT pid, edge_id, fraction, side from \"punts_interes_tmp\"',array(select \"pid\"*(-1) from \"punts_interes_tmp\"),"+self.dlg.TL_Dist_Cost_CCU.text()+",driving_side := 'b',details := false));\n"
         
         try:
             cur.execute(sql_1)
@@ -582,7 +608,7 @@ class ZI_GTC:
             sql_1+="CREATE local temporary TABLE geo_punts_finals_tmp as (select \"" + XarxaCarrers + "_vertices_pgr\".*,\"tbl_punts_finals_tmp\".\"agg_cost\", \"tbl_punts_finals_tmp\".\"start_vid\", \"tbl_punts_finals_tmp\".\"init_radi\" from \"" + XarxaCarrers + "_vertices_pgr\",\"tbl_punts_finals_tmp\" where \"" + XarxaCarrers + "_vertices_pgr\".\"id\" =\"tbl_punts_finals_tmp\".\"node\" order by \"tbl_punts_finals_tmp\".\"start_vid\" desc,\"tbl_punts_finals_tmp\".\"agg_cost\");\n"
         else:
             """Creació de la taula 'geo_punts_finals_tmp' on estan tots els nodes de la xarxa que son a dins del radi fix amb la geometria inclosa"""
-            sql_1+="CREATE local temporary TABLE geo_punts_finals_tmp as (select \"" + XarxaCarrers + "_vertices_pgr\".*,\"tbl_punts_finals_tmp\".\"agg_cost\", \"tbl_punts_finals_tmp\".\"start_vid\", "+self.dlg.TL_Dist_Cost.text()+" from \"" + XarxaCarrers + "_vertices_pgr\",\"tbl_punts_finals_tmp\" where \"" + XarxaCarrers + "_vertices_pgr\".\"id\" =\"tbl_punts_finals_tmp\".\"node\" order by \"tbl_punts_finals_tmp\".\"start_vid\" desc,\"tbl_punts_finals_tmp\".\"agg_cost\");\n"
+            sql_1+="CREATE local temporary TABLE geo_punts_finals_tmp as (select \"" + XarxaCarrers + "_vertices_pgr\".*,\"tbl_punts_finals_tmp\".\"agg_cost\", \"tbl_punts_finals_tmp\".\"start_vid\", "+self.dlg.TL_Dist_Cost_CCU.text()+" from \"" + XarxaCarrers + "_vertices_pgr\",\"tbl_punts_finals_tmp\" where \"" + XarxaCarrers + "_vertices_pgr\".\"id\" =\"tbl_punts_finals_tmp\".\"node\" order by \"tbl_punts_finals_tmp\".\"start_vid\" desc,\"tbl_punts_finals_tmp\".\"agg_cost\");\n"
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -615,7 +641,7 @@ class ZI_GTC:
 #       INICI DE LA CREACIO DE LA TAULA 'TRAMS_FINALS_TMP' QUE CONTINDRA ELS TRAMS QUE FORMEN PART DEL RADI D'ACCIO INDICAT 
 #       *****************************************************************************************************************
         sql_1="DROP table IF EXISTS trams_finals_tmp;\n"
-        if (self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+        if (self.dlg.comboMetodeTreball_CCU.currentText()=="Distancia"):
             """Si s'ha escollit calcula mitjançant distancia """
             #sql per distancia
             if (self.dlg.RB_campTaula.isChecked()):
@@ -623,17 +649,17 @@ class ZI_GTC:
                 sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")<=1 then (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\") when (\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
             else:
                 """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
-                sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")<=1 then ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\") when ("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
+                sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")<=1 then ("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\") when ("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/ST_Length(\"Xarxa_Graf\".\"geom\")>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
         else:
             """Si s'ha escollit calcula mitjançant Temps """
-            if (self.dlg.chk_CostInvers.isChecked()):
+            if (self.dlg.chk_CostInvers_CCU.isChecked()):
                 #sql per temps i cost invers
                 if (self.dlg.RB_campTaula.isChecked()):
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es mitjan�ant un camp de la taula"""
                     sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
                 else:
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
-                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
+                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))<=1 then (("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END)) when (("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"Xarxa_Graf\".\"target\" THEN \"Xarxa_Graf\".\"reverse_cost\" ELSE \"Xarxa_Graf\".\"cost\" END))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
             else:
                 #sql per temps i sense cost invers
                 if (self.dlg.RB_campTaula.isChecked()):
@@ -641,7 +667,7 @@ class ZI_GTC:
                     sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,(\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when ((\"geo_punts_finals_tmp\".\"init_radi\"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
                 else:
                     """Creació de la taula que contindrà els trams que formen part del radi d'acció indicat, si el radi escollit es un radi fix"""
-                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when (("+self.dlg.TL_Dist_Cost.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
+                    sql_1+="CREATE local temporary TABLE trams_finals_tmp as (select \"Xarxa_Graf\".\"id\",\"Xarxa_Graf\".\"cost\",\"Xarxa_Graf\".\"reverse_cost\",\"Xarxa_Graf\".\"geom\",\"geo_punts_finals_tmp\".\"id\" as node,\"geo_punts_finals_tmp\".\"agg_cost\" as coste,("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\") as falta,\"geo_punts_finals_tmp\".\"start_vid\" as id_punt, (select case when (("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))<=1 then (("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\")) when (("+self.dlg.TL_Dist_Cost_CCU.text()+"-\"geo_punts_finals_tmp\".\"agg_cost\")/(\"Xarxa_Graf\".\"cost\"))>1 then (1) end) as fraccio from \"Xarxa_Graf\",\"geo_punts_finals_tmp\" where ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"Xarxa_Graf\".\"geom\",1)=TRUE);\n"
         try:
             cur.execute(sql_1)
             conn.commit()
@@ -853,7 +879,7 @@ class ZI_GTC:
 #       *****************************************************************************************************************
 #       INICI CALCUL DE LA FRACCIO DE CADA TRAM FINAL 
 #       *****************************************************************************************************************
-        if (self.dlg.comboMetodeTreball.currentText()!="Distancia"):
+        if (self.dlg.comboMetodeTreball_CCU.currentText()!="Distancia"):
             """Calcul del la fracci� final de cada tram en el cas d'haber escollit temps"""
             cost_tram="(CASE WHEN \"geo_punts_finals_tmp\".\"id\"=\"fraccio_trams_raw\".\"target\" THEN \"fraccio_trams_raw\".\"cost_invers\" ELSE \"fraccio_trams_raw\".\"cost_directe\" END)"
             where_tram=" FROM \"geo_punts_finals_tmp\" WHERE ST_DWithin(\"geo_punts_finals_tmp\".\"the_geom\",\"fraccio_trams_raw\".\"geom\",1)=TRUE"
@@ -866,9 +892,9 @@ class ZI_GTC:
                 sql_1+=where_tram+";\n"
             else:
                 """ Si el radi es fix"""
-                sql_1+="((case when (\"fraccio_trams_raw\".\"fraccio_inicial\"*"+cost_tram+")>"+self.dlg.TL_Dist_Cost.text()+" then ("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+") else \"fraccio_trams_raw\".\"fraccio_inicial\" end)"
+                sql_1+="((case when (\"fraccio_trams_raw\".\"fraccio_inicial\"*"+cost_tram+")>"+self.dlg.TL_Dist_Cost_CCU.text()+" then ("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+") else \"fraccio_trams_raw\".\"fraccio_inicial\" end)"
                 sql_1+="+"
-                sql_1+="(case when ((1-\"fraccio_trams_raw\".\"fraccio_inicial\")*"+cost_tram+")>"+self.dlg.TL_Dist_Cost.text()+" then ("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+") else (1-\"fraccio_trams_raw\".\"fraccio_inicial\") end))"
+                sql_1+="(case when ((1-\"fraccio_trams_raw\".\"fraccio_inicial\")*"+cost_tram+")>"+self.dlg.TL_Dist_Cost_CCU.text()+" then ("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+") else (1-\"fraccio_trams_raw\".\"fraccio_inicial\") end))"
                 sql_1+=where_tram+";\n"
         else:
             """Calcul del la fracci� final de cada tram en el cas d'haber escollit distancia"""
@@ -883,9 +909,9 @@ class ZI_GTC:
                 sql_1+=where_tram+";\n"
             else:
                 """ Si el radi es fix"""
-                sql_1+="((case when (\"fraccio_trams_raw\".\"fraccio_inicial\"*"+cost_tram+")>"+self.dlg.TL_Dist_Cost.text()+" then ("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+") else \"fraccio_trams_raw\".\"fraccio_inicial\" end)"
+                sql_1+="((case when (\"fraccio_trams_raw\".\"fraccio_inicial\"*"+cost_tram+")>"+self.dlg.TL_Dist_Cost_CCU.text()+" then ("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+") else \"fraccio_trams_raw\".\"fraccio_inicial\" end)"
                 sql_1+="+"
-                sql_1+="(case when ((1-\"fraccio_trams_raw\".\"fraccio_inicial\")*"+cost_tram+")>"+self.dlg.TL_Dist_Cost.text()+" then ("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+") else (1-\"fraccio_trams_raw\".\"fraccio_inicial\") end))"
+                sql_1+="(case when ((1-\"fraccio_trams_raw\".\"fraccio_inicial\")*"+cost_tram+")>"+self.dlg.TL_Dist_Cost_CCU.text()+" then ("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+") else (1-\"fraccio_trams_raw\".\"fraccio_inicial\") end))"
                 sql_1+=where_tram+";\n"
         
         try:
@@ -997,7 +1023,7 @@ class ZI_GTC:
 #       *****************************************************************************************************************
 #       INICI MODIFICACIO DELS TRAMS INICIALS EN EL CAS QUE LA DISTANCIA A RECORRER SIGUI MES PETITA QUE EL PROPI TRAM 
 #       *****************************************************************************************************************
-        if (self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+        if (self.dlg.comboMetodeTreball_CCU.currentText()=="Distancia"):
             """ Calcul amb distancia i radi variable"""
             if (self.dlg.RB_campTaula.isChecked()):
                 """En el cas de radi variable, s'actualiza el camp radi inicial dels trams inicials """
@@ -1037,9 +1063,9 @@ class ZI_GTC:
                 """ Calcul amb distancia i radi fix"""
                 cost_tram="ST_Length(SXI.\"geom\")"
                 sql_1="UPDATE \"fraccio_trams_raw\" set \"geom\"=final.\"geom\" from (select ST_LineSubstring((SXI.\"geom\"),"
-                sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+"))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+")) else 0 end)"
+                sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+"))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+")) else 0 end)"
                 sql_1+=","
-                sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+"))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/"+cost_tram+")) else 1 end)"
+                sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+"))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost_CCU.text()+"/"+cost_tram+")) else 1 end)"
                 sql_1+=") as geom, FT.\"punt_id\",FT.\"id_tram\",FT.\"fraccio\" "
                 sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
@@ -1076,7 +1102,7 @@ class ZI_GTC:
                 sql_1+=","
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=") as geom, FT.\"punt_id\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999 "
                 sql_1+="UNION "
                 sql_1+="select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="FT.\"fraccio_inicial\""
@@ -1089,16 +1115,16 @@ class ZI_GTC:
                 """ Calcul amb temps i radi fix"""
                 sql_1="UPDATE \"fraccio_trams_raw\" set \"geom\"=final.\"geom\" from "
                 sql_1+="(select ST_Union(TOT.geom) geom,TOT.\"punt_id\" from (select ST_LineSubstring((SXI.\"geom\"),"
-                sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_invers\")))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_invers\"))) else 0 end)"
+                sql_1+="(case when (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost_CCU.text()+"/(FT.\"cost_invers\")))>0 then (FT.\"fraccio_inicial\"-("+self.dlg.TL_Dist_Cost_CCU.text()+"/(FT.\"cost_invers\"))) else 0 end)"
                 sql_1+=","
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=") as geom, FT.\"punt_id\" "
-                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999"
+                sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999 "
                 sql_1+="UNION "
                 sql_1+="select ST_LineSubstring((SXI.\"geom\"),"
                 sql_1+="FT.\"fraccio_inicial\""
                 sql_1+=","
-                sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_directe\")))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost.text()+"/(FT.\"cost_directe\"))) else 1 end)"
+                sql_1+="(case when (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost_CCU.text()+"/(FT.\"cost_directe\")))<1 then (FT.\"fraccio_inicial\"+("+self.dlg.TL_Dist_Cost_CCU.text()+"/(FT.\"cost_directe\"))) else 1 end)"
                 sql_1+=") as geom, FT.\"punt_id\" "
                 sql_1+="from \"fraccio_trams_raw\"FT inner join (select SX.\"geom\" as geom,SX.\"id\" as tram_xarxa from \"Xarxa_Graf\" SX, \"punts_interes_tmp\" PI where SX.\"id\"=PI.\"edge_id\") SXI on FT.\"id_tram\"=SXI.tram_xarxa where FT.\"fraccio\"=999) TOT GROUP BY TOT.\"punt_id\") final"
                 sql_1+=" where \"fraccio_trams_raw\".\"punt_id\"=final.\"punt_id\" and \"fraccio_trams_raw\".\"fraccio\"=999;\n"
@@ -1258,8 +1284,6 @@ class ZI_GTC:
 
         self.dlg.setEnabled(False)
         
-        
-        Fitxer=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
         errors = self.controlErrors()
         if len(errors) > 0:
             llista = "Llista d'errors:\n\n"
@@ -1713,73 +1737,93 @@ class ZI_GTC:
 #               *****************************************************************************************************************
 #               INICI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
 #               *****************************************************************************************************************
-                if (tipus_entitat_punt==True):
-                   # XarxaCarrers = self.dlg.comboGraf.currentText()
-                    XarxaCarrers = f'stretch_{Fitxer}'
-                    if (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
-                        sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
-                        buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
-                        vlayer=buffer_resultat['OUTPUT']
-                        vlayer_graf=graf_resultat['OUTPUT']
-                        sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
-                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                        if error[0] != 0:
-                            iface.messageBar().pushMessage(u'Error', error[1])
+                if self.dlg.tabServeiRouting.currentIndex() == 0:
+                    if (tipus_entitat_punt==True):
+                    # XarxaCarrers = self.dlg.comboGraf.currentText()
+                        XarxaCarrers = f'stretch_{Fitxer}'
+                        if (self.dlg.chk_calc_local_CCU.isChecked() and self.dlg.comboMetodeTreball_CCU.currentText()=="Distancia"):
+                            sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
+                            buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf2(sql_total,sql_xarxa,uri)
+                            vlayer=buffer_resultat['OUTPUT']
+                            vlayer_graf=graf_resultat['OUTPUT']
+                            sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                            error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                            if error[0] != 0:
+                                iface.messageBar().pushMessage(u'Error', error[1])
 
-                    elif (self.dlg.chk_calc_local.isChecked() and self.dlg.comboMetodeTreball.currentText()=="Temps"):
-                        sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
-                        buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf3(sql_total,sql_xarxa,uri)
-                        vlayer=buffer_resultat['OUTPUT']
-                        vlayer_graf=graf_resultat['OUTPUT']
+                        elif (self.dlg.chk_calc_local_CCU.isChecked() and self.dlg.comboMetodeTreball_CCU.currentText()=="Temps"):
+                            sql_xarxa="SELECT * FROM \"" + XarxaCarrers + "\""
+                            buffer_resultat,graf_resultat,buffer_dissolved=self.calcul_graf3(sql_total,sql_xarxa,uri)
+                            vlayer=buffer_resultat['OUTPUT']
+                            vlayer_graf=graf_resultat['OUTPUT']
 
-                        #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
-                        # layer - QGIS vector layer
-                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                        if error[0] != 0:
-                            iface.messageBar().pushMessage(u'Error', error[1])
-                            
-                        #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
-                        #if error[0] != 0:
-                        #    iface.messageBar().pushMessage(u'Error', error[1])
-                            
-                        sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                            #uri = "dbname='test' host=localhost port=5432 user='user' password='password' key=gid type=POINT table=\"public\".\"test\" (geom) sql="
+                            # layer - QGIS vector layer
+                            error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                            if error[0] != 0:
+                                iface.messageBar().pushMessage(u'Error', error[1])
+                                
+                            #error = QgsVectorLayerExporter.exportLayer(buffer_dissolved['OUTPUT'], 'table="public"."buffer_diss_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                            #if error[0] != 0:
+                            #    iface.messageBar().pushMessage(u'Error', error[1])
+                                
+                            sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                        else:
+                            sql_buffer=self.calcul_graf(sql_total)
+                            if sql_buffer=="ERROR":
+                                self.dlg.setEnabled(True)
+                                return
                     else:
-                        sql_buffer=self.calcul_graf(sql_total)
-                        if sql_buffer=="ERROR":
-                            self.dlg.setEnabled(True)
-                            return
-                else:
-                    QApplication.processEvents()
-                    uri.setDataSource("","("+sql_total+")","geom","","id")
-                    QApplication.processEvents()
-                    punts_lyr = QgsVectorLayer(uri.uri(False), "punts", "postgres")
-                    QApplication.processEvents()
-                    result_buffer = processing.run('native:buffer', {"INPUT": punts_lyr,
-                                                                        "DISTANCE": self.dlg.Radi.text(),
-                                                                        "SEGMENTS": 5,
-                                                                        "END_CAP_STYLE":0,
-                                                                        "JOIN_STYLE":0,
-                                                                        "MITER_LIMIT":1,
-                                                                        "DISSOLVE":True,
-                                                                        "OUTPUT": 'memory:'})
-                                                                        #"OUTPUT": 'postgres: table="public"."testpep" (geom) '+uri2.connectionInfo()})
-                    #result_buffer_dissolve = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
-                    #                                                            "FIELD": 'id',
-                    #                                                            "OUTPUT": 'memory:'})
-                    #buffer_dissolved = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
-                    #                                                        "OUTPUT": 'memory:'})
-                    vlayer=result_buffer['OUTPUT']
-                    #vlayer=punts_lyr
-                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                        QApplication.processEvents()
+                        uri.setDataSource("","("+sql_total+")","geom","","id")
+                        QApplication.processEvents()
+                        punts_lyr = QgsVectorLayer(uri.uri(False), "punts", "postgres")
+                        QApplication.processEvents()
+                        result_buffer = processing.run('native:buffer', {"INPUT": punts_lyr,
+                                                                            "DISTANCE": self.dlg.Radi_CCU.text(),
+                                                                            "SEGMENTS": 5,
+                                                                            "END_CAP_STYLE":0,
+                                                                            "JOIN_STYLE":0,
+                                                                            "MITER_LIMIT":1,
+                                                                            "DISSOLVE":True,
+                                                                            "OUTPUT": 'memory:'})
+                                                                            #"OUTPUT": 'postgres: table="public"."testpep" (geom) '+uri2.connectionInfo()})
+                        #result_buffer_dissolve = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
+                        #                                                            "FIELD": 'id',
+                        #                                                            "OUTPUT": 'memory:'})
+                        #buffer_dissolved = processing.run('native:dissolve', {"INPUT": result_buffer['OUTPUT'],
+                        #                                                        "OUTPUT": 'memory:'})
+                        vlayer=result_buffer['OUTPUT']
+                        #vlayer=punts_lyr
+                        sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
+                        error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
+                        if error[0] != 0:
+                            iface.messageBar().pushMessage(u'Error', error[1])
+                        pass
+    #               *****************************************************************************************************************
+    #               FI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
+    #               ***(**************************************************************************************************************
+                    #print (sql_buffer)
+                    #print("!dd")
+                
+                elif self.dlg.tabServeiRouting.currentIndex() == 1:
+                    sql_xarxa = f"SELECT * FROM \"stretch_{Fitxer}\""
+                    sql_punts = f"SELECT * FROM {self.dlg.comboSelPunts.currentText()}"
+                    uri.setDataSource("","("+sql_xarxa+")","geom","","id")
+                    capa_xarxa = QgsVectorLayer(uri.uri(False), "xarxa", "postgres")
+                    uri.setDataSource("","("+sql_punts+")","geom","","id")
+                    capa_punts = QgsVectorLayer(uri.uri(False), "punts", "postgres")
+                    buffer_resultat,graf_resultat = self.calcul_graf_valhalla(capa_punts,capa_xarxa,uri)
+                    vlayer = buffer_resultat
+                    vlayer_graf = graf_resultat
+                    vlayer.startEditing()
+                    idx = vlayer.fields().indexFromName('id')
+                    vlayer.deleteAttribute(idx)
+                    vlayer.commitChanges()
                     error = QgsVectorLayerExporter.exportLayer(vlayer, 'table="public"."buffer_final_'+Fitxer+'" (geom) '+uri.connectionInfo(), "postgres", vlayer.crs(), False)
                     if error[0] != 0:
-                        iface.messageBar().pushMessage(u'Error', error[1])
-                    pass
-#               *****************************************************************************************************************
-#               FI CALCUL DEL GRAF I DEL BUFFER DELS TRAMS CALCULATS 
-#               ***(**************************************************************************************************************
-                #print (sql_buffer)
-                #print("!dd")
+                        iface.messageBar().pushMessage(u'Error', error[1])  
+                    sql_buffer="SELECT * FROM \"buffer_final_"+Fitxer+"\""
                 
                 progress.setValue(60)
                 self.dlg.Progres.setValue(60)
@@ -1839,7 +1883,7 @@ class ZI_GTC:
                         vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
-                        symbol.setColor(self.dlg.color.palette().color(1))
+                        symbol.setColor(self.dlg.color_CCU.palette().color(1))
                         QgsProject.instance().addMapLayer(vlayer,False)
                         root = QgsProject.instance().layerTreeRoot()
                         myLayerNode=QgsLayerTreeLayer(vlayer)
@@ -1973,10 +2017,13 @@ class ZI_GTC:
 #               *****************************************************************************************************************
 #               INICI CARREGA DE LA COBERTURA DEL BUFFER DEL GRAF  
 #               *****************************************************************************************************************
-                if (self.dlg.chk_calc_local.isChecked()): # and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
-                    sql_total1="SELECT * FROM Buffer_Final_"+Fitxer
-                else:
-                    sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"geom\" FROM Buffer_Final_"+Fitxer
+                if self.dlg.tabServeiRouting.currentIndex() == 0:
+                    if (self.dlg.chk_calc_local_CCU.isChecked()): # and self.dlg.comboMetodeTreball_CCU.currentText()=="Distancia"):
+                        sql_total1="SELECT * FROM Buffer_Final_"+Fitxer
+                    else:
+                        sql_total1="SELECT row_number() OVER () AS \"id\",\"punt_id\",\"geom\" FROM Buffer_Final_"+Fitxer
+                elif self.dlg.tabServeiRouting.currentIndex() == 1:
+                    sql_total1 = f"SELECT * FROM \"buffer_final_{Fitxer}\""
 
                 """ Creació del tematic del buffer"""
                 uri.setDataSource("","("+sql_total1+")","geom","","id")
@@ -2014,6 +2061,7 @@ class ZI_GTC:
 
                 else:
                     print("error ZI:")
+
                 progress.setValue(90)
                 self.dlg.Progres.setValue(90)
                 QApplication.processEvents()
@@ -2030,7 +2078,7 @@ class ZI_GTC:
                     titol2='Graf: '
                     titol3=titol2.encode('utf8','strict')+titol.encode('utf8','strict')
                     #vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
-                    if (self.dlg.chk_calc_local.isChecked()):# and self.dlg.comboMetodeTreball.currentText()=="Distancia"):
+                    if (self.dlg.chk_calc_local_CCU.isChecked()):# and self.dlg.comboMetodeTreball_CCU.currentText()=="Distancia"):
                         vlayer=vlayer_graf
                     else:
                         uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","geom","","id")
@@ -2056,7 +2104,7 @@ class ZI_GTC:
 
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
-                        symbol.setColor(self.dlg.color.palette().color(1))
+                        symbol.setColor(self.dlg.color_CCU.palette().color(1))
                         if (self.dlg.comboTras.currentText()=='Estret'):
                             symbol.setWidth(0.5)
                         if (self.dlg.comboTras.currentText()=='Mitjà'):
@@ -2087,8 +2135,7 @@ class ZI_GTC:
                 
         else:
             QMessageBox.information(None, 'Informació:', 'No està connectat a cap base de dades')
-                    
-        
+
         self.eliminaTaulesCalcul(Fitxer)
         self.eliminaTaulesTemporals()
         
@@ -2118,7 +2165,7 @@ class ZI_GTC:
         Aquesta funció s'encarrega d'eliminar les taules utilitzades durant el càlcul
         '''   
         drop = ''  
-        drop += 'DROP TABLE IF EXISTS "buffer_final_'+Fitxer+'";\n'
+        #drop += 'DROP TABLE IF EXISTS "buffer_final_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Illes_Resum_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Graf_utilitzat_'+Fitxer+'";\n'
@@ -2160,7 +2207,7 @@ class ZI_GTC:
         parameters = {'INPUT': network_lyr,
                       'START_POINTS': punts_lyr,
                       'STRATEGY': 0,
-                      'TRAVEL_COST2':self.dlg.TL_Dist_Cost.text(),
+                      'TRAVEL_COST2':self.dlg.TL_Dist_Cost_CCU.text(),
                       'DIRECTION_FIELD': '',
                       'VALUE_FORWARD': '',
                       'VALUE_BACKWARD': '',
@@ -2229,7 +2276,7 @@ class ZI_GTC:
         outputs={}
         outputs['InvertirDireccinDeLnea'] = processing.run('native:reverselinedirection', alg_params)
         
-        if (self.dlg.chk_CostInvers.isChecked()):
+        if (self.dlg.chk_CostInvers_CCU.isChecked()):
 
             # VEL_PS=0
             alg_params = {
@@ -2356,7 +2403,7 @@ class ZI_GTC:
         }
         outputs['Direccio'] = processing.run('qgis:fieldcalculator', alg_params)
 
-        if (self.dlg.chk_CostNusos.isChecked()):
+        if (self.dlg.chk_CostNusos_CCU.isChecked()):
             # CREACIO_L_TRAM_TEMP
             alg_params = {
                 'FIELD_LENGTH': 10,
@@ -2533,7 +2580,7 @@ class ZI_GTC:
         #QgsProject.instance().addMapLayer(vl)
         #outputs={}
         
-        if (self.dlg.chk_CostNusos.isChecked()):
+        if (self.dlg.chk_CostNusos_CCU.isChecked()):
 
             # AFEGIR COST DE SEMAFORS A VEL_KMH
             #print("entra")
@@ -2564,7 +2611,7 @@ class ZI_GTC:
             'START_POINTS': p_lyr,
             'STRATEGY': 1,
             'TOLERANCE': 0.1,
-            'TRAVEL_COST2': str(float(self.dlg.TL_Dist_Cost.text())/60),
+            'TRAVEL_COST2': str(float(self.dlg.TL_Dist_Cost_CCU.text())/60),
             'VALUE_BACKWARD': '',
             'VALUE_BOTH': '',
             'VALUE_FORWARD': 'D',
@@ -2574,7 +2621,7 @@ class ZI_GTC:
 #         parameters = {'INPUT': network_lyr,
 #                       'START_POINTS': punts_lyr,
 #                       'STRATEGY': 0,
-#                       'TRAVEL_COST':self.dlg.TL_Dist_Cost.text(),
+#                       'TRAVEL_COST':self.dlg.TL_Dist_Cost_CCU.text(),
 #                       'DIRECTION_FIELD': '',
 #                       'VALUE_FORWARD': '',
 #                       'VALUE_BACKWARD': '',
@@ -2616,35 +2663,165 @@ class ZI_GTC:
                                                              "OUTPUT": 'memory:'})        
         
         return result_buffer_dissolve,result_dissolve,buffer_dissolved
-    
-    
+
+    def calcul_graf_valhalla(self,sql_punts,sql_xarxa,uri2):
+        crs_desti = QgsCoordinateReferenceSystem('EPSG:4326')
+        crs_origen = QgsProject.instance().crs()
+        transform_context = QgsProject.instance().transformContext()
+        coord_transformer = QgsCoordinateTransform(crs_origen, crs_desti, transform_context)
+        coordenades = []
+        isocrones = []
+        for feature in sql_punts.getFeatures():
+            geometry = feature.geometry()
+            punt_id = feature['id']
+            if geometry is not None and not geometry.isMultipart():
+                point = geometry.asPoint()
+                point_wgs84 = coord_transformer.transform(point)
+                lon = point_wgs84.x()
+                lat = point_wgs84.y()
+                coordenades.append((f"{lon},{lat}", punt_id))
+        if self.dlg.RB_Graf.isChecked():
+            if self.dlg.comboMetodeTreball_Valhalla.currentText() == 'Distancia':
+                range_type = 'distance'
+                range = self.dlg.TL_Dist_Cost_Valhalla.text()
+            if self.dlg.comboMetodeTreball_Valhalla.currentText() == 'Temps':
+                range_type = 'time'
+                #range = str(int(self.dlg.TL_Dist_Cost_Valhalla.text())*60)
+                range = self.dlg.TL_Dist_Cost_Valhalla.text()
+        if self.dlg.RB_RadiCirc.isChecked():
+            range = self.dlg.Radi_Valhalla.text()
+            range_type = 'distance'
+
+        for coordenada, punt_id in coordenades:
+            params = {
+                "mode": "valhalla",
+                "service": "isochrone",
+                "go": "pedestrian",
+                "orig": coordenada,
+                "metric": range_type,
+                "range": range
+            }
+            response = requests.get(valhalla_base_url, params=params)
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                except ValueError:
+                    print("La resposta del servidor Valhalla no és un JSON vàlid. Resposta rebuda: ", response.text)
+                    return
+                geojson_data = result
+                crs_projecte = QgsProject.instance().crs().authid()
+                layer = QgsVectorLayer(f"Polygon?crs={crs_projecte}", "Isocrona Valhalla", "memory")
+                prov = layer.dataProvider()
+                prov.addAttributes([QgsField("contour", QVariant.Int)])
+                prov.addAttributes([QgsField("entity_id", QVariant.Int)])
+                layer.updateFields()
+                crs_origen = QgsCoordinateReferenceSystem('EPSG:4326')
+                crs_desti = QgsProject.instance().crs()
+                transform_context = QgsProject.instance().transformContext()
+                coord_transformer = QgsCoordinateTransform(crs_origen, crs_desti, transform_context)
+                for feature_data in geojson_data["features"]:
+                    coordinates = feature_data["geometry"]["coordinates"][0]
+                    contour_value = feature_data["properties"]["contour"]
+                    transformed_coords = [coord_transformer.transform(QgsPointXY(lon, lat)) for lon, lat in coordinates]
+                    polygon = QgsGeometry.fromPolygonXY([transformed_coords])
+                    feature = QgsFeature()
+                    feature.setGeometry(polygon)
+                    feature.setAttributes([contour_value, punt_id])
+                    prov.addFeatures([feature])
+                
+                isocrones.append(layer)
+            else:
+                print(f"Error a la solicitud al servidor Valhalla: {response.status_code}")
+                print(response.text)
+                return
+
+        if len(isocrones) > 0:
+            alg_params = {
+                'LAYERS': isocrones,
+                'CRS': f'{crs_projecte}',
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            }
+            result = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+
+            result.setName("Isocrones Valhalla Unides")
+        else:
+            print("No s'han trobat capes d'isocrones de Valhalla per unir")
+            return
+
+        # Es carrega la capa de la xarxa de carrers
+        #uri2.setDataSource("","("+sql_xarxa+")","geom","","id")
+        #network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
+        network_lyr = sql_xarxa
+
+        # Intersecció
+        alg_params = {
+            "INPUT": network_lyr,
+            "OVERLAY": result,
+            "OUTPUT": 'TEMPORARY_OUTPUT'
+        }
+        carrers_afectats = processing.run('native:intersection', alg_params)['OUTPUT']
+
+        # Buffer dels carrers afectats
+        alg_params = {
+            "INPUT": carrers_afectats,
+            "DISTANCE": self.dlg.TL_radiZI.text(),
+            "SEGMENTS": 5,
+            "END_CAP_STYLE": 0,
+            "JOIN_STYLE": 0,
+            "MITER_LIMIT": 1,
+            "DISSOLVE": False,
+            "OUTPUT": 'TEMPORARY_OUTPUT'
+        }
+        buffer = processing.run('native:buffer', alg_params)['OUTPUT']
+
+        # Dissolve del buffer
+        alg_params = {
+            "INPUT": buffer,
+            "FIELD": 'entity_id',
+            "OUTPUT": 'TEMPORARY_OUTPUT'
+        }
+        result_buffer = processing.run('native:dissolve', alg_params)['OUTPUT']
+
+        return result_buffer, carrers_afectats
+                
     def on_click_cbDibuix(self,state):
         """Aquesta funció controla l'aparen�a del checkBox que controla l'apartat de Dibuix"""
         if state != QtCore.Qt.Checked:
-            self.dlg.lblColor.setEnabled(False)
-            self.dlg.color.setEnabled(False)
+            self.dlg.lblColor_CCU.setEnabled(False)
+            self.dlg.color_CCU.setEnabled(False)
             self.dlg.lblTras.setEnabled(False)
             self.dlg.comboTras.setEnabled(False)         
         else:
-            self.dlg.lblColor.setEnabled(True)
-            self.dlg.color.setEnabled(True)
+            self.dlg.lblColor_CCU.setEnabled(True)
+            self.dlg.color_CCU.setEnabled(True)
             self.dlg.lblTras.setEnabled(True)
             self.dlg.comboTras.setEnabled(True)   
+
+    def on_click_ColorArea(self):
+        global micolorArea
+        aux = QColorDialog.getColor()
+        if aux.isValid():
+            micolorArea = aux
+        estilo='border:1px solid #000000; background-color: '+ micolorArea.name()
+        self.dlg.colorArea.setStyleSheet(estilo)
+        self.dlg.colorArea.setAutoFillBackground(True)
+        pep=self.dlg.colorArea.palette().color(1)
+        pass
     
-    def on_click_Color(self):
+    def on_click_Color_CCU(self):
         """Aquesta funci� obra un dialeg per poder triar el color del contorn de l'area que volem pintar. """
         global micolor
         aux = QColorDialog.getColor()
         if aux.isValid():
             micolor = aux
         estilo='border:1px solid #000000; background-color: '+ micolor.name()
-        self.dlg.color.setStyleSheet(estilo)
-        self.dlg.color.setAutoFillBackground(True)
-        pep=self.dlg.color.palette().color(1)
+        self.dlg.color_CCU.setStyleSheet(estilo)
+        self.dlg.color_CCU.setAutoFillBackground(True)
+        pep=self.dlg.color_CCU.palette().color(1)
 
         pass
     
-    def on_click_ColorArea(self):
+    def on_click_ColorArea_CCU(self):
         """Aquesta funci� obra un dialeg per poder triar el color de l'area que volem pintar. """
         global micolorArea
         aux = QColorDialog.getColor()
@@ -2655,9 +2832,39 @@ class ZI_GTC:
         self.dlg.colorArea.setAutoFillBackground(True)
         pep=self.dlg.colorArea.palette().color(1)
 
-        self.dlg.color_2.setStyleSheet(estilo)
-        self.dlg.color_2.setAutoFillBackground(True)
-        pep=self.dlg.color_2.palette().color(1)
+        self.dlg.color_CCU.setStyleSheet(estilo)
+        self.dlg.color_CCU.setAutoFillBackground(True)
+        pep=self.dlg.color_CCU.palette().color(1)
+
+        pass
+
+    def on_click_Color_Valhalla(self):
+        """Aquesta funci� obrir� un dialeg per poder triar el color de l'�rea que volem pintar. """
+        global micolor
+        aux = QColorDialog.getColor()
+        if aux.isValid():
+            micolor = aux
+        estilo='border:1px solid #000000; background-color: '+ micolorArea.name()
+        self.dlg.color_Valhalla.setStyleSheet(estilo)
+        self.dlg.color_Valhalla.setAutoFillBackground(True)
+        pep=self.dlg.color_Valhalla.palette().color(1)
+
+        pass
+
+    def on_click_ColorArea_Valhalla(self):
+        """Aquesta funci� obrir� un dialeg per poder triar el color de l'�rea que volem pintar. """
+        global micolorArea
+        aux = QColorDialog.getColor()
+        if aux.isValid():
+            micolorArea = aux
+        estilo='border:1px solid #000000; background-color: '+ micolorArea.name()
+        self.dlg.colorArea.setStyleSheet(estilo)
+        self.dlg.colorArea.setAutoFillBackground(True)
+        pep=self.dlg.colorArea.palette().color(1)
+
+        self.dlg.color_Valhalla.setStyleSheet(estilo)
+        self.dlg.color_Valhalla.setAutoFillBackground(True)
+        pep=self.dlg.color_Valhalla.palette().color(1)
 
         pass
     
@@ -2693,29 +2900,42 @@ class ZI_GTC:
     
     def on_click_Cancelar(self):
         """Aquesta funci� tancar la finestra."""
-        self.eliminaTaulesTemporals()
+        if connexioFeta:
+            self.eliminaTaulesTemporals()
         self.dlg.close()
     
-    def changeComboMetodeTreball(self):
+    def changeComboMetodeTreball_CCU(self):
         """Aquesta funci� controla el canvi d'opci� del comboBox del m�tode treball."""
         dist = 'Distancia'
         temps = 'Temps'
-        nom_metode=self.dlg.comboMetodeTreball.currentText()
+        nom_metode=self.dlg.comboMetodeTreball_CCU.currentText()
         if dist == nom_metode:
-            self.dlg.chk_CostNusos.setEnabled(False)
-            self.dlg.chk_CostInvers.setEnabled(False)
+            self.dlg.chk_CostNusos_CCU.setEnabled(False)
+            self.dlg.chk_CostInvers_CCU.setEnabled(False)
             self.dlg.RB_campFix.setText('Distància (m):')
             self.dlg.RB_campTaula.setText('Camp de la distància:')
-            self.dlg.TL_Dist_Cost.setText("150")
-            self.dlg.chk_calc_local.setVisible(True)
+            self.dlg.TL_Dist_Cost_CCU.setText("150")
+            self.dlg.chk_calc_local_CCU.setVisible(True)
             
         else:
-            self.dlg.chk_CostNusos.setEnabled(True)
-            self.dlg.chk_CostInvers.setEnabled(True)
+            self.dlg.chk_CostNusos_CCU.setEnabled(True)
+            self.dlg.chk_CostInvers_CCU.setEnabled(True)
             self.dlg.RB_campFix.setText('Temps (minuts):')
             self.dlg.RB_campTaula.setText('Camp del temps:')
-            self.dlg.TL_Dist_Cost.setText("2")
-            self.dlg.chk_calc_local.setVisible(True)
+            self.dlg.TL_Dist_Cost_CCU.setText("2")
+            self.dlg.chk_calc_local_CCU.setVisible(True)
+
+    def changeComboMetodeTreball_Valhalla(self):
+        """Aquesta funcio controla el canvi d'opcio del comboBox del metode treball."""
+        dist = 'Distancia'
+        temps = 'Temps'
+        nom_metode=self.dlg.comboMetodeTreball_Valhalla.currentText()
+        if dist == nom_metode:
+            self.dlg.RB_campFix_Valhalla.setText('Distància (m):')
+            self.dlg.TL_Dist_Cost_Valhalla.setText("150")
+        else:
+            self.dlg.RB_campFix_Valhalla.setText('Temps (minuts):')
+            self.dlg.TL_Dist_Cost_Valhalla.setText("2")
     
     def estatInicial(self):
         """Aquesta funci� posa tots els elements de la interficie en el seu estat inicial."""
@@ -2726,25 +2946,31 @@ class ZI_GTC:
         self.dlg.versio.setText(Versio_modul)
         micolor = QColor(255,0,0,255)
         micolorArea = QColor(0,255,255,255)
-        self.dlg.TL_Dist_Cost.setText("150")
+        self.dlg.TL_Dist_Cost_CCU.setText("150")
+        self.dlg.TL_Dist_Cost_Valhalla.setText("150")
         self.dlg.TL_radiZI.setText("20")
         self.dlg.colorArea.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
-        self.dlg.color.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
-        self.dlg.color_2.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
+        self.dlg.color_CCU.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
+        self.dlg.color_CCU.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
+        self.dlg.color_Valhalla.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
+        self.dlg.color_Valhalla.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
         self.dlg.lblNum.setText("")
         self.dlg.lblNum.setStyleSheet('border:1px solid #000000')
         self.dlg.lblHab.setStyleSheet('border:1px solid #000000; background-color: rgb(85, 170, 255)')
-        self.changeComboMetodeTreball()    
-        self.dlg.lblColor.setEnabled(False)
-        self.dlg.color.setEnabled(False)
+        self.changeComboMetodeTreball_CCU()
+        self.changeComboMetodeTreball_Valhalla()    
+        self.dlg.lblColor_CCU.setEnabled(False)
+        self.dlg.color_CCU.setEnabled(False)
+        self.dlg.lblColor_Valhalla.setEnabled(False)
+        self.dlg.color_Valhalla.setEnabled(False)
         self.dlg.lblTras.setEnabled(False)
         self.dlg.comboTras.setEnabled(False)
         self.dlg.lblEstatConn.setText('No connectat')
         self.dlg.checkBoxDibuix.setChecked(False)
         self.dlg.comboSelPunts.clear()
         self.dlg.comboLeyenda.clear()
-        self.dlg.comboCapaPunts.clear()
+        self.dlg.comboCapaPunts_CCU.clear()
         self.dlg.comboGraf.clear()
         self.dlg.bt_ILLES.setChecked(True)
         self.dlg.bt_Parcel.setChecked(False)
@@ -2752,12 +2978,13 @@ class ZI_GTC:
         self.dlg.TB_titol.setText("")
         self.dlg.gb_poblacio.setVisible(False)
         self.dlg.RB_campTaula.setText('Camp de la distància:')
-        self.dlg.chk_CostNusos.setChecked(False)
-        self.dlg.chk_CostInvers.setChecked(True)
+        self.dlg.chk_CostNusos_CCU.setChecked(False)
+        self.dlg.chk_CostInvers_CCU.setChecked(True)
         self.dlg.chk_poblacio.setChecked(False)
-        self.dlg.comboMetodeTreball.setCurrentIndex(0)
+        self.dlg.comboMetodeTreball_CCU.setCurrentIndex(0)
+        self.dlg.comboMetodeTreball_Valhalla.setCurrentIndex(0)
         self.dlg.comboTras.setCurrentIndex(0)
-        self.dlg.comboCapaPunts.clear()
+        self.dlg.comboCapaPunts_CCU.clear()
         self.dlg.bt_Parcel.setChecked(False)
         self.dlg.bt_Portals.setChecked(False)
         self.dlg.bt_ILLES.setChecked(False)
@@ -2767,9 +2994,9 @@ class ZI_GTC:
         self.dlg.RB_campFix.setChecked(True)
         self.dlg.RB_campFix.setText('Distància (m):')
         self.dlg.RB_campTaula.setChecked(False)
-        self.dlg.comboCapaPunts.setEnabled(False)
-        self.dlg.chk_calc_local.setChecked(True)
-        self.dlg.chk_calc_local.setVisible(True)
+        self.dlg.comboCapaPunts_CCU.setEnabled(False)
+        self.dlg.chk_calc_local_CCU.setChecked(True)
+        self.dlg.chk_calc_local_CCU.setVisible(True)
         self.dlg.setWindowIcon(QIcon(self.plugin_dir+'\icon.png'))
         QApplication.processEvents()
         self.dlg.setEnabled(True)
@@ -2795,8 +3022,9 @@ class ZI_GTC:
         global cur
         global conn
         global versio_db
+        global connexioFeta
         s = QSettings()
-        self.dlg.comboCapaPunts.clear()
+        self.dlg.comboCapaPunts_CCU.clear()
         self.dlg.comboGraf.clear()
         select = 'Selecciona connexió'
         nom_conn=self.dlg.comboConnexio.currentText()
@@ -2829,17 +3057,18 @@ class ZI_GTC:
                 cur = conn.cursor()
                 self.detect_database_version()
                 #sql = "select f_table_name from geometry_columns where type = 'POINT' and f_table_schema ='public' order by 1"
-                sql = "select f_table_name from geometry_columns where type in ('LINESTRING','MULTILINESTRING','POINT','MULTIPOINT','POLYGON','MULTIPOLYGON') and f_table_schema ='public' order by 1"
+                sql = "select f_table_name from geometry_columns where type in ('LINESTRING','MULTILINESTRING','POINT','MULTIPOINT','POLYGON','MULTIPOLYGON') and f_table_schema ='public' and f_table_name NOT LIKE \'%ccu_temp%\' order by 1"
+                #sql = "select f_table_name from geometry_columns where type in ('POINT','MULTIPOINT') and f_table_schema ='public' and f_table_name NOT LIKE \'%ccu_temp%\' order by 1"
                 cur.execute(sql)
                 llista = cur.fetchall()
                 self.ompleCombos(self.dlg.comboSelPunts, llista, 'Selecciona una entitat', True)
-                sql2 = "select f_table_name from geometry_columns where ((type = 'MULTILINESTRING' or type = 'LINESTRING') and f_table_schema ='public') order by 1"
+                sql2 = "select f_table_name from geometry_columns where ((type = 'MULTILINESTRING' or type = 'LINESTRING') and f_table_schema ='public' and f_table_name NOT LIKE \'%ccu_temp%\') order by 1"
                 cur.execute(sql2)
                 llista2 = cur.fetchall()
                 self.ompleCombos(self.dlg.comboGraf, llista2, 'Selecciona una entitat', True)
                 
                 self.cerca_elements_Leyenda()
-                  
+                connexioFeta = True
             except Exception as ex:
                 print ("I am unable to connect to the database")
                 template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -2976,6 +3205,7 @@ class ZI_GTC:
         global versio_db
         global cur
         global conn
+        global connexioFeta
 
         sql = f"DROP TABLE IF EXISTS address_{Fitxer};\n"
         sql += f"DROP TABLE IF EXISTS zone_{Fitxer};\n"
@@ -2984,6 +3214,7 @@ class ZI_GTC:
         sql += f"DROP TABLE IF EXISTS stretch_{Fitxer}_vertices_pgr;\n"
         cur.execute(sql)
         conn.commit()
+        connexioFeta = False
 
     def cerca_elements_Leyenda(self):
         
@@ -3162,8 +3393,8 @@ class ZI_GTC:
             tipus=self.tipus_entitat_escollida(capa)
             if tipus in ('LINESTRING','MULTILINESTRING','POLYGON','MULTIPOLYGON'):
                 #self.dlg.comboGraf.setEnabled(False)
-                self.dlg.comboMetodeTreball.setCurrentIndex(0)
-                #self.dlg.comboMetodeTreball.setEnabled(False)
+                self.dlg.comboMetodeTreball_CCU.setCurrentIndex(0)
+                self.dlg.comboMetodeTreball_CCU.setEnabled(False)
                 tipus_entitat_punt=False
                 self.dlg.RB_RadiCirc.setChecked(True)
                 self.dlg.RB_Graf.setEnabled(False)
@@ -3178,10 +3409,10 @@ class ZI_GTC:
         if capa != 'Selecciona una entitat':
             self.dlg.TB_titol.setText(capa)
             llista = self.obteLlista("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name   = '" + capa + "'")
-            self.ompleCombos(self.dlg.comboCapaPunts, llista,'Selecciona un camp', True)
+            self.ompleCombos(self.dlg.comboCapaPunts_CCU, llista,'Selecciona un camp', True)
         else:
             self.dlg.TB_titol.setText("")
-            self.dlg.comboCapaPunts.clear()
+            self.dlg.comboCapaPunts_CCU.clear()
         '''
     def on_Change_ComboGraf(self, state):
         """
@@ -3328,11 +3559,13 @@ class ZI_GTC:
         return currentConnections
 
     def run(self):
+        global Fitxer
         """Run method that performs all the real work"""
         # show the dialog
         self.estatInicial()
         self.dlg.show()
         conn=self.getConnections()
+        Fitxer="ccu_temp"+datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
         #layers = QgsMapLayerRegistry.instance().mapLayers().values()
         self.populateComboBox(self.dlg.comboConnexio ,conn,'Selecciona connexió',True)
         

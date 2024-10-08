@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>885</width>
-    <height>340</height>
+    <width>900</width>
+    <height>400</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -21,14 +21,14 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>685</width>
-    <height>340</height>
+    <width>900</width>
+    <height>400</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>1000</width>
-    <height>340</height>
+    <width>900</width>
+    <height>400</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -196,148 +196,6 @@
       <width>51</width>
       <height>20</height>
      </rect>
-    </property>
-   </widget>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_3">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>180</y>
-     <width>351</width>
-     <height>121</height>
-    </rect>
-   </property>
-   <property name="autoFillBackground">
-    <bool>true</bool>
-   </property>
-   <property name="title">
-    <string/>
-   </property>
-   <widget class="QComboBox" name="comboMetodeTreball">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>181</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="mouseTracking">
-     <bool>true</bool>
-    </property>
-    <item>
-     <property name="text">
-      <string>Distancia</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Temps</string>
-     </property>
-    </item>
-   </widget>
-   <widget class="QLabel" name="label_2">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>0</y>
-      <width>121</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>10</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Mètode de treball</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="chk_CostNusos">
-    <property name="geometry">
-     <rect>
-      <x>210</x>
-      <y>39</y>
-      <width>91</width>
-      <height>17</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Cost de nusos</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="chk_CostInvers">
-    <property name="geometry">
-     <rect>
-      <x>210</x>
-      <y>19</y>
-      <width>91</width>
-      <height>17</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Cost Invers</string>
-    </property>
-   </widget>
-   <widget class="QComboBox" name="comboCapaPunts">
-    <property name="geometry">
-     <rect>
-      <x>210</x>
-      <y>90</y>
-      <width>140</width>
-      <height>24</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="TL_Dist_Cost">
-    <property name="geometry">
-     <rect>
-      <x>210</x>
-      <y>60</y>
-      <width>113</width>
-      <height>20</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QRadioButton" name="RB_campFix">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>60</y>
-      <width>171</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Distància/funció de cost fixa</string>
-    </property>
-   </widget>
-   <widget class="QRadioButton" name="RB_campTaula">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>90</y>
-      <width>191</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Camp de la distància/funció de cost:</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="chk_calc_local">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>45</y>
-      <width>171</width>
-      <height>17</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Calcul en local</string>
     </property>
    </widget>
   </widget>
@@ -665,7 +523,7 @@
      <x>370</x>
      <y>180</y>
      <width>311</width>
-     <height>120</height>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
@@ -690,7 +548,7 @@
       <x>0</x>
       <y>36</y>
       <width>381</width>
-      <height>81</height>
+      <height>111</height>
      </rect>
     </property>
     <property name="title">
@@ -700,7 +558,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>60</y>
+       <y>70</y>
        <width>121</width>
        <height>21</height>
       </rect>
@@ -837,6 +695,15 @@
         <colorrole role="ToolTipText">
          <brush brushstyle="SolidPattern">
           <color alpha="255">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </brush>
+        </colorrole>
+        <colorrole role="PlaceholderText">
+         <brush brushstyle="NoBrush">
+          <color alpha="128">
            <red>0</red>
            <green>0</green>
            <blue>0</blue>
@@ -980,6 +847,15 @@
           </color>
          </brush>
         </colorrole>
+        <colorrole role="PlaceholderText">
+         <brush brushstyle="NoBrush">
+          <color alpha="128">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </brush>
+        </colorrole>
        </inactive>
        <disabled>
         <colorrole role="WindowText">
@@ -1117,6 +993,15 @@
           </color>
          </brush>
         </colorrole>
+        <colorrole role="PlaceholderText">
+         <brush brushstyle="NoBrush">
+          <color alpha="128">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </brush>
+        </colorrole>
        </disabled>
       </palette>
      </property>
@@ -1138,7 +1023,7 @@
      <property name="geometry">
       <rect>
        <x>180</x>
-       <y>30</y>
+       <y>40</y>
        <width>121</width>
        <height>61</height>
       </rect>
@@ -1227,7 +1112,7 @@ població no afectada</string>
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>40</y>
+       <y>50</y>
        <width>121</width>
        <height>20</height>
       </rect>
@@ -1288,7 +1173,7 @@ border-color: rgb(0, 0, 0);</string>
    <property name="geometry">
     <rect>
      <x>0</x>
-     <y>310</y>
+     <y>350</y>
      <width>360</width>
      <height>16</height>
     </rect>
@@ -1301,7 +1186,7 @@ border-color: rgb(0, 0, 0);</string>
    <property name="geometry">
     <rect>
      <x>370</x>
-     <y>303</y>
+     <y>343</y>
      <width>75</width>
      <height>30</height>
     </rect>
@@ -1438,6 +1323,15 @@ border-color: rgb(0, 0, 0);</string>
       <colorrole role="ToolTipText">
        <brush brushstyle="SolidPattern">
         <color alpha="255">
+         <red>0</red>
+         <green>0</green>
+         <blue>0</blue>
+        </color>
+       </brush>
+      </colorrole>
+      <colorrole role="PlaceholderText">
+       <brush brushstyle="NoBrush">
+        <color alpha="128">
          <red>0</red>
          <green>0</green>
          <blue>0</blue>
@@ -1581,6 +1475,15 @@ border-color: rgb(0, 0, 0);</string>
         </color>
        </brush>
       </colorrole>
+      <colorrole role="PlaceholderText">
+       <brush brushstyle="NoBrush">
+        <color alpha="128">
+         <red>0</red>
+         <green>0</green>
+         <blue>0</blue>
+        </color>
+       </brush>
+      </colorrole>
      </inactive>
      <disabled>
       <colorrole role="WindowText">
@@ -1718,6 +1621,15 @@ border-color: rgb(0, 0, 0);</string>
         </color>
        </brush>
       </colorrole>
+      <colorrole role="PlaceholderText">
+       <brush brushstyle="NoBrush">
+        <color alpha="128">
+         <red>0</red>
+         <green>0</green>
+         <blue>0</blue>
+        </color>
+       </brush>
+      </colorrole>
      </disabled>
     </palette>
    </property>
@@ -1735,7 +1647,7 @@ border-color: rgb(0, 0, 0);</string>
    <property name="geometry">
     <rect>
      <x>480</x>
-     <y>302</y>
+     <y>342</y>
      <width>75</width>
      <height>30</height>
     </rect>
@@ -1746,71 +1658,6 @@ border-color: rgb(0, 0, 0);</string>
    <property name="text">
     <string>SORTIR</string>
    </property>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_6">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>180</y>
-     <width>350</width>
-     <height>81</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>Radi Zona Influencia</string>
-   </property>
-   <widget class="QLabel" name="label_14">
-    <property name="geometry">
-     <rect>
-      <x>110</x>
-      <y>22</y>
-      <width>111</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Introdueix el radi (m)</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="Radi">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>20</y>
-      <width>91</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>150</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="lblColor_2">
-    <property name="geometry">
-     <rect>
-      <x>180</x>
-      <y>50</y>
-      <width>31</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Color:</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="color_2">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>50</y>
-      <width>41</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
   </widget>
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
@@ -1866,7 +1713,7 @@ border-color: rgb(0, 0, 0);</string>
    <property name="geometry">
     <rect>
      <x>630</x>
-     <y>310</y>
+     <y>350</y>
      <width>51</width>
      <height>21</height>
     </rect>
@@ -1916,11 +1763,390 @@ border-color: rgb(0, 0, 0);</string>
     <bool>true</bool>
    </property>
   </widget>
+  <widget class="QTabWidget" name="tabServeiRouting">
+   <property name="geometry">
+    <rect>
+     <x>9</x>
+     <y>180</y>
+     <width>361</width>
+     <height>151</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="QWidget" name="tab_CCU">
+    <attribute name="title">
+     <string>CCU</string>
+    </attribute>
+    <widget class="QGroupBox" name="groupBox_Circular">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>350</width>
+       <height>81</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Radi Zona Influencia</string>
+     </property>
+     <widget class="QLabel" name="label_CCU">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>22</y>
+        <width>111</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Introdueix el radi (m)</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="Radi_CCU">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>20</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>150</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="lblColor_CCU">
+      <property name="geometry">
+       <rect>
+        <x>180</x>
+        <y>50</y>
+        <width>31</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Color:</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="color_CCU">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>50</y>
+        <width>41</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_Graf">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>351</width>
+       <height>121</height>
+      </rect>
+     </property>
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <widget class="QComboBox" name="comboMetodeTreball_CCU">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>20</y>
+        <width>181</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+      <item>
+       <property name="text">
+        <string>Distancia</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Temps</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QLabel" name="label_2">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>0</y>
+        <width>121</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Mètode de treball</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="chk_CostNusos_CCU">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>39</y>
+        <width>91</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Cost de nusos</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="chk_CostInvers_CCU">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>19</y>
+        <width>91</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Cost Invers</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="comboCapaPunts_CCU">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>90</y>
+        <width>140</width>
+        <height>24</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="TL_Dist_Cost_CCU">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>60</y>
+        <width>113</width>
+        <height>20</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="RB_campFix">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>171</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Distància/funció de cost fixa</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="RB_campTaula">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>90</y>
+        <width>191</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Camp de la distància/funció de cost:</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="chk_calc_local_CCU">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>45</y>
+        <width>171</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Calcul en local</string>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_Valhalla">
+    <attribute name="title">
+     <string>Valhalla</string>
+    </attribute>
+    <widget class="QGroupBox" name="groupBox_Circular_Valhalla">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>350</width>
+       <height>81</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Radi Zona Influencia</string>
+     </property>
+     <widget class="QLabel" name="label_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>22</y>
+        <width>111</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Introdueix el radi (m)</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="Radi_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>20</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>150</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="lblColor_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>180</x>
+        <y>50</y>
+        <width>31</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Color:</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="color_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>50</y>
+        <width>41</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_Graf_Valhalla">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>351</width>
+       <height>121</height>
+      </rect>
+     </property>
+     <property name="autoFillBackground">
+      <bool>true</bool>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <widget class="QComboBox" name="comboMetodeTreball_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>20</y>
+        <width>181</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+      <item>
+       <property name="text">
+        <string>Distancia</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Temps</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QLabel" name="label_7">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>0</y>
+        <width>121</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Mètode de treball</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="TL_Dist_Cost_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>60</y>
+        <width>113</width>
+        <height>20</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="RB_campFix_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>171</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Distància/funció de cost fixa</string>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
   <zorder>layoutWidget</zorder>
-  <zorder>groupBox_6</zorder>
   <zorder>comboConnexio</zorder>
   <zorder>groupBox_4</zorder>
-  <zorder>groupBox_3</zorder>
   <zorder>groupBox_5</zorder>
   <zorder>groupBox</zorder>
   <zorder>groupBox_2</zorder>
@@ -1934,8 +2160,8 @@ border-color: rgb(0, 0, 0);</string>
   <zorder>bt_info</zorder>
   <zorder>label</zorder>
   <zorder>label_3</zorder>
+  <zorder>tabServeiRouting</zorder>
  </widget>
- <resources>
- </resources>
+ <resources/>
  <connections/>
 </ui>
