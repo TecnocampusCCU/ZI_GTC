@@ -1719,11 +1719,11 @@ border-color: rgb(0, 0, 0);</string>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="tab_CCU">
     <attribute name="title">
-     <string>CCU</string>
+     <string>Xarxa Pròpia</string>
     </attribute>
     <widget class="QGroupBox" name="groupBox_Circular">
      <property name="enabled">
@@ -1938,7 +1938,7 @@ border-color: rgb(0, 0, 0);</string>
    </widget>
    <widget class="QWidget" name="tab_Valhalla">
     <attribute name="title">
-     <string>Valhalla</string>
+     <string>OpenStreetMap</string>
     </attribute>
     <widget class="QGroupBox" name="groupBox_Graf_Valhalla">
      <property name="geometry">
