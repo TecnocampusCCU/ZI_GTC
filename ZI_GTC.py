@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241007"
+Versio_modul="V_Q3.241022"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -2165,7 +2165,7 @@ class ZI_GTC:
         Aquesta funció s'encarrega d'eliminar les taules utilitzades durant el càlcul
         '''   
         drop = ''  
-        #drop += 'DROP TABLE IF EXISTS "buffer_final_'+Fitxer+'";\n'
+        drop += 'DROP TABLE IF EXISTS "buffer_final_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Illes_Resum_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Graf_utilitzat_'+Fitxer+'";\n'
@@ -3217,7 +3217,6 @@ class ZI_GTC:
         connexioFeta = False
 
     def cerca_elements_Leyenda(self):
-        
         if self.dlg.comboConnexio.currentText() != 'Selecciona connexió':
             try: #Accedir als elements de la llegenda que siguin de tipus punt.
                 aux = []
