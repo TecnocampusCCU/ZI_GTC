@@ -86,14 +86,14 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241022"
+Versio_modul="V_Q3.241111"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
 tipus_entitat_punt=False
 versio_db = ""
 
-valhalla_base_url = "https://ccuserver.tecnocampus.cat/"
+valhalla_base_url = "https://ccuserver.tecnocampus.cat/routing/"
 
 class ZI_GTC:
     """QGIS Plugin Implementation."""
@@ -133,9 +133,7 @@ class ZI_GTC:
         self.dlg.comboMetodeTreball_CCU.currentIndexChanged.connect(self.changeComboMetodeTreball_CCU)
         self.dlg.comboMetodeTreball_Valhalla.currentIndexChanged.connect(self.changeComboMetodeTreball_Valhalla)
         self.dlg.color_CCU.clicked.connect(self.on_click_Color_CCU)
-        self.dlg.color_Valhalla.clicked.connect(self.on_click_Color_Valhalla)
         self.dlg.color_CCU.clicked.connect(self.on_click_ColorArea_CCU)
-        self.dlg.color_Valhalla.clicked.connect(self.on_click_ColorArea_Valhalla)
         self.dlg.colorArea.clicked.connect(self.on_click_ColorArea)
         self.dlg.checkBoxDibuix.stateChanged.connect(self.on_click_cbDibuix)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
@@ -302,8 +300,8 @@ class ZI_GTC:
         self.dlg.groupBox_Graf_Valhalla.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
-        self.dlg.groupBox_Circular_Valhalla.setVisible(not(tipus_entitat_punt))
-           
+        self.dlg.tabServeiRouting.setTabEnabled(1, tipus_entitat_punt)
+        
     def on_click_RadiCirc(self,enabled):
         global tipus_entitat_punt
         tipus_entitat_punt=False
@@ -312,8 +310,8 @@ class ZI_GTC:
         self.dlg.groupBox_Graf_Valhalla.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
-        self.dlg.groupBox_Circular_Valhalla.setVisible(not(tipus_entitat_punt))
-            
+        self.dlg.tabServeiRouting.setCurrentIndex(0)
+        self.dlg.tabServeiRouting.setTabEnabled(1, tipus_entitat_punt)
 
     def on_click_campTaula(self,enabled):
         """Aquesta funci� activa o desactiva el camp de la taula"""
@@ -2688,9 +2686,6 @@ class ZI_GTC:
                 range_type = 'time'
                 #range = str(int(self.dlg.TL_Dist_Cost_Valhalla.text())*60)
                 range = self.dlg.TL_Dist_Cost_Valhalla.text()
-        if self.dlg.RB_RadiCirc.isChecked():
-            range = self.dlg.Radi_Valhalla.text()
-            range_type = 'distance'
 
         for coordenada, punt_id in coordenades:
             params = {
@@ -2838,19 +2833,6 @@ class ZI_GTC:
 
         pass
 
-    def on_click_Color_Valhalla(self):
-        """Aquesta funci� obrir� un dialeg per poder triar el color de l'�rea que volem pintar. """
-        global micolor
-        aux = QColorDialog.getColor()
-        if aux.isValid():
-            micolor = aux
-        estilo='border:1px solid #000000; background-color: '+ micolorArea.name()
-        self.dlg.color_Valhalla.setStyleSheet(estilo)
-        self.dlg.color_Valhalla.setAutoFillBackground(True)
-        pep=self.dlg.color_Valhalla.palette().color(1)
-
-        pass
-
     def on_click_ColorArea_Valhalla(self):
         """Aquesta funci� obrir� un dialeg per poder triar el color de l'�rea que volem pintar. """
         global micolorArea
@@ -2861,10 +2843,6 @@ class ZI_GTC:
         self.dlg.colorArea.setStyleSheet(estilo)
         self.dlg.colorArea.setAutoFillBackground(True)
         pep=self.dlg.colorArea.palette().color(1)
-
-        self.dlg.color_Valhalla.setStyleSheet(estilo)
-        self.dlg.color_Valhalla.setAutoFillBackground(True)
-        pep=self.dlg.color_Valhalla.palette().color(1)
 
         pass
     
@@ -2910,16 +2888,16 @@ class ZI_GTC:
         temps = 'Temps'
         nom_metode=self.dlg.comboMetodeTreball_CCU.currentText()
         if dist == nom_metode:
-            self.dlg.chk_CostNusos_CCU.setEnabled(False)
-            self.dlg.chk_CostInvers_CCU.setEnabled(False)
+            self.dlg.chk_CostNusos_CCU.setEnabled(True)
+            self.dlg.chk_CostInvers_CCU.setEnabled(True)
             self.dlg.RB_campFix.setText('Distància (m):')
             self.dlg.RB_campTaula.setText('Camp de la distància:')
             self.dlg.TL_Dist_Cost_CCU.setText("150")
             self.dlg.chk_calc_local_CCU.setVisible(True)
             
         else:
-            self.dlg.chk_CostNusos_CCU.setEnabled(True)
-            self.dlg.chk_CostInvers_CCU.setEnabled(True)
+            self.dlg.chk_CostNusos_CCU.setEnabled(False)
+            self.dlg.chk_CostInvers_CCU.setEnabled(False)
             self.dlg.RB_campFix.setText('Temps (minuts):')
             self.dlg.RB_campTaula.setText('Camp del temps:')
             self.dlg.TL_Dist_Cost_CCU.setText("2")
@@ -2952,8 +2930,6 @@ class ZI_GTC:
         self.dlg.colorArea.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.color_CCU.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
         self.dlg.color_CCU.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
-        self.dlg.color_Valhalla.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
-        self.dlg.color_Valhalla.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
         self.dlg.lblNum.setText("")
         self.dlg.lblNum.setStyleSheet('border:1px solid #000000')
@@ -2962,8 +2938,6 @@ class ZI_GTC:
         self.changeComboMetodeTreball_Valhalla()    
         self.dlg.lblColor_CCU.setEnabled(False)
         self.dlg.color_CCU.setEnabled(False)
-        self.dlg.lblColor_Valhalla.setEnabled(False)
-        self.dlg.color_Valhalla.setEnabled(False)
         self.dlg.lblTras.setEnabled(False)
         self.dlg.comboTras.setEnabled(False)
         self.dlg.lblEstatConn.setText('No connectat')
@@ -2993,6 +2967,8 @@ class ZI_GTC:
         self.dlg.Progres.setVisible(False)
         self.dlg.RB_campFix.setChecked(True)
         self.dlg.RB_campFix.setText('Distància (m):')
+        self.dlg.RB_campFix_Valhalla.setChecked(True)
+        self.dlg.RB_campFix_Valhalla.setText('Distància (m):')
         self.dlg.RB_campTaula.setChecked(False)
         self.dlg.comboCapaPunts_CCU.setEnabled(False)
         self.dlg.chk_calc_local_CCU.setChecked(True)
