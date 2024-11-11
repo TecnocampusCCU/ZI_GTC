@@ -2661,6 +2661,7 @@ class ZI_GTC:
         coord_transformer = QgsCoordinateTransform(crs_origen, crs_desti, transform_context)
         coordenades = []
         isocrones = []
+        carrers = []
         for feature in sql_punts.getFeatures():
             geometry = feature.geometry()
             punt_id = feature['id']
@@ -2691,11 +2692,11 @@ class ZI_GTC:
             response = requests.get(valhalla_base_url, params=params)
             if response.status_code == 200:
                 try:
-                    result = response.json()
+                    result_iso = response.json()
                 except ValueError:
                     print("La resposta del servidor Valhalla no és un JSON vàlid. Resposta rebuda: ", response.text)
                     return
-                geojson_data = result
+                geojson_data = result_iso
                 crs_projecte = QgsProject.instance().crs().authid()
                 layer = QgsVectorLayer(f"Polygon?crs={crs_projecte}", "Isocrona Valhalla", "memory")
                 prov = layer.dataProvider()
@@ -2728,9 +2729,12 @@ class ZI_GTC:
                 'CRS': f'{crs_projecte}',
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             }
-            result = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+            result_iso = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+            print("Isocrones:")
+            print(isocrones)
+            QgsProject.instance().addMapLayer(result_iso)
 
-            result.setName("Isocrones Valhalla Unides")
+            result_iso.setName("Isocrones Valhalla Unides")
         else:
             print("No s'han trobat capes d'isocrones de Valhalla per unir")
             return
@@ -2738,12 +2742,71 @@ class ZI_GTC:
         # Es carrega la capa de la xarxa de carrers
         #uri2.setDataSource("","("+sql_xarxa+")","geom","","id")
         #network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
-        network_lyr = sql_xarxa
+        #network_lyr = sql_xarxa
+        for coordenada, punt_id in coordenades:
+            params = {
+                "mode": "valhalla",
+                "service": "expansion",
+                "expansion_mode": "isochrone",
+                "go": "pedestrian",
+                "orig": coordenada,
+                "metric": range_type,
+                "range": range
+            }
+            response = requests.get(valhalla_base_url, params=params)
+            if response.status_code == 200:
+                try:
+                    result_exp = response.json()
+                except ValueError:
+                    print("La resposta del servidor Valhalla no és un JSON vàlid. Resposta rebuda: ", response.text)
+                    return
+                geojson_data = result_exp
+                crs_projecte = QgsProject.instance().crs().authid()
+                layer = QgsVectorLayer(f"LineString?crs={crs_projecte}", "Graf Valhalla", "memory")
+                prov = layer.dataProvider()
+                prov.addAttributes([QgsField("entity_id", QVariant.Int)])
+                layer.updateFields()
+                crs_origen = QgsCoordinateReferenceSystem('EPSG:4326')
+                crs_desti = QgsProject.instance().crs()
+                transform_context = QgsProject.instance().transformContext()
+                coord_transformer = QgsCoordinateTransform(crs_origen, crs_desti, transform_context)
+                for feature_data in geojson_data["features"]:
+                    coordinates = feature_data["geometry"]["coordinates"]
+                    transformed_coords = [coord_transformer.transform(QgsPointXY(lon, lat)) for lon, lat in coordinates]
+                    line = QgsGeometry.fromPolylineXY(transformed_coords)
+                    feature = QgsFeature()
+                    feature.setGeometry(line)
+                    feature.setAttributes([punt_id])
+                    prov.addFeatures([feature])
+
+                carrers.append(layer)
+            else:
+                print(f"Error a la solicitud al servidor Valhalla: {response.status_code}")
+                print(response.text)
+                return
+            
+        if len(carrers) > 0:
+            alg_params = {
+                'LAYERS': carrers,
+                'CRS': f'{crs_projecte}',
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            }
+            result_exp = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+            print("Carrers:")
+            print(carrers)
+            QgsProject.instance().addMapLayer(result_exp)
+
+            result_exp.setName("Carrers Valhalla Unides")
+        else:
+            print("No s'han trobat capes de carrers de Valhalla per unir")
+            return
+        
+        network_lyr = result_exp
 
         # Intersecció
         alg_params = {
             "INPUT": network_lyr,
-            "OVERLAY": result,
+            "OVERLAY": result_iso,
             "OUTPUT": 'TEMPORARY_OUTPUT'
         }
         carrers_afectats = processing.run('native:intersection', alg_params)['OUTPUT']
