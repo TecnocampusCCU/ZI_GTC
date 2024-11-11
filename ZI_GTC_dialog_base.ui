@@ -1719,7 +1719,7 @@ border-color: rgb(0, 0, 0);</string>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_CCU">
     <attribute name="title">
@@ -2006,14 +2006,20 @@ border-color: rgb(0, 0, 0);</string>
        </rect>
       </property>
      </widget>
-     <widget class="QRadioButton" name="RB_campFix_Valhalla">
+     <widget class="QLabel" name="lbl_campFix_Valhalla">
       <property name="geometry">
        <rect>
-        <x>10</x>
+        <x>30</x>
         <y>60</y>
         <width>171</width>
         <height>21</height>
        </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
       </property>
       <property name="text">
        <string>Distància/funció de cost fixa</string>

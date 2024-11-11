@@ -144,7 +144,6 @@ class ZI_GTC:
         self.dlg.comboGraf.currentIndexChanged.connect(self.on_Change_ComboGraf)
         self.dlg.chk_poblacio.stateChanged.connect(self.on_click_CB_poblacio)
         self.dlg.RB_campFix.toggled.connect(self.on_click_campFix)
-        self.dlg.RB_campFix_Valhalla.toggled.connect(self.on_click_campFix_Valhalla)
         self.dlg.RB_campTaula.toggled.connect(self.on_click_campTaula)
         self.dlg.RB_Graf.toggled.connect(self.on_click_Graf)
         self.dlg.RB_RadiCirc.toggled.connect(self.on_click_RadiCirc)
@@ -300,7 +299,7 @@ class ZI_GTC:
         self.dlg.groupBox_Graf_Valhalla.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
-        self.dlg.tabServeiRouting.setTabEnabled(1, tipus_entitat_punt)
+        self.dlg.tabServeiRouting.setTabVisible(1, tipus_entitat_punt)
         
     def on_click_RadiCirc(self,enabled):
         global tipus_entitat_punt
@@ -311,7 +310,7 @@ class ZI_GTC:
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
         self.dlg.tabServeiRouting.setCurrentIndex(0)
-        self.dlg.tabServeiRouting.setTabEnabled(1, tipus_entitat_punt)
+        self.dlg.tabServeiRouting.setTabVisible(1, tipus_entitat_punt)
 
     def on_click_campTaula(self,enabled):
         """Aquesta funci� activa o desactiva el camp de la taula"""
@@ -326,13 +325,6 @@ class ZI_GTC:
             self.dlg.TL_Dist_Cost_CCU.setEnabled(True)
         else:
             self.dlg.TL_Dist_Cost_CCU.setEnabled(False)
-
-    def on_click_campFix_Valhalla(self,enabled):
-        """Aquesta funci� activa o desactiva el camp fix"""
-        if enabled:
-            self.dlg.TL_Dist_Cost_Valhalla.setEnabled(True)
-        else:
-            self.dlg.TL_Dist_Cost_Valhalla.setEnabled(False)
         
     def grafValid(self, taula):
         """Aquesta funci� comprova si la taula que li hem passat t� la seva capa de graf corresponent"""
@@ -2909,10 +2901,10 @@ class ZI_GTC:
         temps = 'Temps'
         nom_metode=self.dlg.comboMetodeTreball_Valhalla.currentText()
         if dist == nom_metode:
-            self.dlg.RB_campFix_Valhalla.setText('Distància (m):')
+            self.dlg.lbl_campFix_Valhalla.setText('Distància (m):')
             self.dlg.TL_Dist_Cost_Valhalla.setText("150")
         else:
-            self.dlg.RB_campFix_Valhalla.setText('Temps (minuts):')
+            self.dlg.lbl_campFix_Valhalla.setText('Temps (minuts):')
             self.dlg.TL_Dist_Cost_Valhalla.setText("2")
     
     def estatInicial(self):
@@ -2967,8 +2959,7 @@ class ZI_GTC:
         self.dlg.Progres.setVisible(False)
         self.dlg.RB_campFix.setChecked(True)
         self.dlg.RB_campFix.setText('Distància (m):')
-        self.dlg.RB_campFix_Valhalla.setChecked(True)
-        self.dlg.RB_campFix_Valhalla.setText('Distància (m):')
+        self.dlg.lbl_campFix_Valhalla.setText('Distància (m):')
         self.dlg.RB_campTaula.setChecked(False)
         self.dlg.comboCapaPunts_CCU.setEnabled(False)
         self.dlg.chk_calc_local_CCU.setChecked(True)
