@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241111"
+Versio_modul="V_Q3.241112"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -151,6 +151,7 @@ class ZI_GTC:
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
         self.dlg.bt_ReloadLeyenda.clicked.connect(self.cerca_elements_Leyenda)
         self.dlg.tabWidget_Destino.currentChanged.connect(self.on_Change_TabWidget)
+        self.dlg.tabServeiRouting.currentChanged.connect(self.on_Change_TabServeiRouting)
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr('&CCU')
@@ -362,7 +363,7 @@ class ZI_GTC:
             else:
                 capa = self.dlg.comboLeyenda.currentText()
 
-        if (self.dlg.comboGraf.currentText() == 'Selecciona una entitat' and tipus_entitat_punt):
+        if (self.dlg.tabServeiRouting.currentIndex() == 0) and (self.dlg.comboGraf.currentText() == 'Selecciona una entitat' and tipus_entitat_punt):
             errors.append('No hi ha cap capa de xarxa seleccionada')
             #print(tipus_entitat_punt)
         if self.dlg.RB_campTaula.isChecked():
@@ -1803,7 +1804,7 @@ class ZI_GTC:
                     capa_xarxa = QgsVectorLayer(uri.uri(False), "xarxa", "postgres")
                     uri.setDataSource("","("+sql_punts+")","geom","","id")
                     capa_punts = QgsVectorLayer(uri.uri(False), "punts", "postgres")
-                    buffer_resultat,graf_resultat = self.calcul_graf_valhalla(capa_punts,capa_xarxa,uri)
+                    buffer_resultat,graf_resultat = self.calcul_graf_valhalla(capa_punts)
                     vlayer = buffer_resultat
                     vlayer_graf = graf_resultat
                     vlayer.startEditing()
@@ -2654,7 +2655,7 @@ class ZI_GTC:
         
         return result_buffer_dissolve,result_dissolve,buffer_dissolved
 
-    def calcul_graf_valhalla(self,sql_punts,sql_xarxa,uri2):
+    def calcul_graf_valhalla(self,sql_punts):
         crs_desti = QgsCoordinateReferenceSystem('EPSG:4326')
         crs_origen = QgsProject.instance().crs()
         transform_context = QgsProject.instance().transformContext()
@@ -2730,10 +2731,6 @@ class ZI_GTC:
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             }
             result_iso = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
-            print("Isocrones:")
-            print(isocrones)
-            QgsProject.instance().addMapLayer(result_iso)
-
             result_iso.setName("Isocrones Valhalla Unides")
         else:
             print("No s'han trobat capes d'isocrones de Valhalla per unir")
@@ -2743,6 +2740,7 @@ class ZI_GTC:
         #uri2.setDataSource("","("+sql_xarxa+")","geom","","id")
         #network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
         #network_lyr = sql_xarxa
+
         for coordenada, punt_id in coordenades:
             params = {
                 "mode": "valhalla",
@@ -2792,10 +2790,6 @@ class ZI_GTC:
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             }
             result_exp = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
-            print("Carrers:")
-            print(carrers)
-            QgsProject.instance().addMapLayer(result_exp)
-
             result_exp.setName("Carrers Valhalla Unides")
         else:
             print("No s'han trobat capes de carrers de Valhalla per unir")
@@ -3497,6 +3491,12 @@ class ZI_GTC:
             self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
             return
         
+    def on_Change_TabServeiRouting(self):
+        if self.dlg.tabServeiRouting.currentIndex() == 0:
+            self.dlg.comboGraf.setEnabled(True)
+        else:
+            self.dlg.comboGraf.setEnabled(False)
+
     def on_click_CB_poblacio(self, state):
         """Aquesta funci� mostra les funcions de dibuix en funci� de l'estat del checkBox"""
         if state != QtCore.Qt.Checked:
