@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241112"
+Versio_modul="V_Q3.241113"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -460,8 +460,8 @@ class ZI_GTC:
             if self.dlg.tabWidget_Destino.currentIndex() == 0:
                 geometria=self.campGeometria(self.dlg.comboSelPunts.currentText())
             else:
-                geometria=self.campGeometria(self.dlg.comboLeyenda.currentText())
-                
+                #geometria=self.campGeometria(self.dlg.comboLeyenda.currentText())
+                geometria=self.campGeometria("LayerExportat"+Fitxer)
             sql_1="drop table if exists punts_interes_tmp;\n"
             if self.dlg.RB_campTaula.isChecked():
                 """Es crea la taula 'punts_interes_tmp' seleccionant el centroide de la entitat seleccionada utilitzant com a radi el valor del camp seleccionat"""
@@ -1799,10 +1799,11 @@ class ZI_GTC:
                 
                 elif self.dlg.tabServeiRouting.currentIndex() == 1:
                     sql_xarxa = f"SELECT * FROM \"stretch_{Fitxer}\""
+                    # Anteriorment està definit sql_total que és comboSelPunts o comboLeyenda depenent del que hagis seleccionat
                     sql_punts = f"SELECT * FROM {self.dlg.comboSelPunts.currentText()}"
                     uri.setDataSource("","("+sql_xarxa+")","geom","","id")
                     capa_xarxa = QgsVectorLayer(uri.uri(False), "xarxa", "postgres")
-                    uri.setDataSource("","("+sql_punts+")","geom","","id")
+                    uri.setDataSource("","("+sql_total+")","geom","","id")
                     capa_punts = QgsVectorLayer(uri.uri(False), "punts", "postgres")
                     buffer_resultat,graf_resultat = self.calcul_graf_valhalla(capa_punts)
                     vlayer = buffer_resultat
@@ -2161,7 +2162,7 @@ class ZI_GTC:
         drop += 'DROP TABLE IF EXISTS "LayerExportat'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Graf_utilitzat_'+Fitxer+'";\n'
         drop += 'DROP TABLE IF EXISTS "Resum_Temp_'+Fitxer+'";\n'
-        drop += "drop table if exists Graf_utilitzat_"+Fitxer+";\n"
+        drop += 'drop table if exists "Graf_utilitzat_'+Fitxer+'";\n'
         try:
             cur.execute(drop)
             conn.commit()
@@ -3521,7 +3522,7 @@ class ZI_GTC:
         global cur
         global conn
 
-        sql = "select f_geometry_column from geometry_columns where f_table_name = '" + taula + "'"
+        sql = f"select f_geometry_column from geometry_columns where f_table_name = '{taula}'"
         
         cur.execute(sql)
         camp = cur.fetchall()
