@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241113"
+Versio_modul="V_Q3.241114"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -300,7 +300,7 @@ class ZI_GTC:
         self.dlg.groupBox_Graf_Valhalla.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
-        self.dlg.tabServeiRouting.setTabVisible(1, tipus_entitat_punt)
+        self.dlg.tabServeiRouting.setTabEnabled(1, tipus_entitat_punt)
         
     def on_click_RadiCirc(self,enabled):
         global tipus_entitat_punt
@@ -311,7 +311,7 @@ class ZI_GTC:
         self.dlg.groupBox_4.setVisible(tipus_entitat_punt)
         self.dlg.groupBox_Circular.setVisible(not(tipus_entitat_punt))
         self.dlg.tabServeiRouting.setCurrentIndex(0)
-        self.dlg.tabServeiRouting.setTabVisible(1, tipus_entitat_punt)
+        self.dlg.tabServeiRouting.setTabEnabled(1, tipus_entitat_punt)
 
     def on_click_campTaula(self,enabled):
         """Aquesta funci� activa o desactiva el camp de la taula"""
@@ -2733,6 +2733,7 @@ class ZI_GTC:
             }
             result_iso = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
             result_iso.setName("Isocrones Valhalla Unides")
+            #QgsProject.instance().addMapLayer(result_iso)
         else:
             print("No s'han trobat capes d'isocrones de Valhalla per unir")
             return
@@ -2783,7 +2784,7 @@ class ZI_GTC:
                 print(f"Error a la solicitud al servidor Valhalla: {response.status_code}")
                 print(response.text)
                 return
-            
+        
         if len(carrers) > 0:
             alg_params = {
                 'LAYERS': carrers,
@@ -2792,6 +2793,7 @@ class ZI_GTC:
             }
             result_exp = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
             result_exp.setName("Carrers Valhalla Unides")
+            #QgsProject.instance().addMapLayer(result_exp)
         else:
             print("No s'han trobat capes de carrers de Valhalla per unir")
             return
@@ -2805,7 +2807,7 @@ class ZI_GTC:
             "OUTPUT": 'TEMPORARY_OUTPUT'
         }
         carrers_afectats = processing.run('native:intersection', alg_params)['OUTPUT']
-
+        #QgsProject.instance().addMapLayer(carrers_afectats)
         # Buffer dels carrers afectats
         alg_params = {
             "INPUT": carrers_afectats,
