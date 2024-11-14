@@ -132,8 +132,8 @@ class ZI_GTC:
         self.dlg.bt_OK.clicked.connect(self.on_click_OK)
         self.dlg.comboMetodeTreball_CCU.currentIndexChanged.connect(self.changeComboMetodeTreball_CCU)
         self.dlg.comboMetodeTreball_Valhalla.currentIndexChanged.connect(self.changeComboMetodeTreball_Valhalla)
-        self.dlg.color_CCU.clicked.connect(self.on_click_Color_CCU)
-        self.dlg.color_CCU.clicked.connect(self.on_click_ColorArea_CCU)
+        self.dlg.color.clicked.connect(self.on_click_Color)
+        self.dlg.color_2.clicked.connect(self.on_click_ColorArea)
         self.dlg.colorArea.clicked.connect(self.on_click_ColorArea)
         self.dlg.checkBoxDibuix.stateChanged.connect(self.on_click_cbDibuix)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
@@ -1875,7 +1875,7 @@ class ZI_GTC:
                         vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
-                        symbol.setColor(self.dlg.color_CCU.palette().color(1))
+                        symbol.setColor(self.dlg.color.palette().color(1))
                         QgsProject.instance().addMapLayer(vlayer,False)
                         root = QgsProject.instance().layerTreeRoot()
                         myLayerNode=QgsLayerTreeLayer(vlayer)
@@ -2096,7 +2096,7 @@ class ZI_GTC:
 
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
-                        symbol.setColor(self.dlg.color_CCU.palette().color(1))
+                        symbol.setColor(self.dlg.color.palette().color(1))
                         if (self.dlg.comboTras.currentText()=='Estret'):
                             symbol.setWidth(0.5)
                         if (self.dlg.comboTras.currentText()=='Mitjà'):
@@ -2834,13 +2834,13 @@ class ZI_GTC:
     def on_click_cbDibuix(self,state):
         """Aquesta funció controla l'aparen�a del checkBox que controla l'apartat de Dibuix"""
         if state != QtCore.Qt.Checked:
-            self.dlg.lblColor_CCU.setEnabled(False)
-            self.dlg.color_CCU.setEnabled(False)
+            self.dlg.lblColor.setEnabled(False)
+            self.dlg.color.setEnabled(False)
             self.dlg.lblTras.setEnabled(False)
             self.dlg.comboTras.setEnabled(False)         
         else:
-            self.dlg.lblColor_CCU.setEnabled(True)
-            self.dlg.color_CCU.setEnabled(True)
+            self.dlg.lblColor.setEnabled(True)
+            self.dlg.color.setEnabled(True)
             self.dlg.lblTras.setEnabled(True)
             self.dlg.comboTras.setEnabled(True)   
 
@@ -2855,16 +2855,16 @@ class ZI_GTC:
         pep=self.dlg.colorArea.palette().color(1)
         pass
     
-    def on_click_Color_CCU(self):
+    def on_click_Color(self):
         """Aquesta funci� obra un dialeg per poder triar el color del contorn de l'area que volem pintar. """
         global micolor
         aux = QColorDialog.getColor()
         if aux.isValid():
             micolor = aux
         estilo='border:1px solid #000000; background-color: '+ micolor.name()
-        self.dlg.color_CCU.setStyleSheet(estilo)
-        self.dlg.color_CCU.setAutoFillBackground(True)
-        pep=self.dlg.color_CCU.palette().color(1)
+        self.dlg.color.setStyleSheet(estilo)
+        self.dlg.color.setAutoFillBackground(True)
+        pep=self.dlg.color.palette().color(1)
 
         pass
     
@@ -2879,9 +2879,9 @@ class ZI_GTC:
         self.dlg.colorArea.setAutoFillBackground(True)
         pep=self.dlg.colorArea.palette().color(1)
 
-        self.dlg.color_CCU.setStyleSheet(estilo)
-        self.dlg.color_CCU.setAutoFillBackground(True)
-        pep=self.dlg.color_CCU.palette().color(1)
+        self.dlg.color_2.setStyleSheet(estilo)
+        self.dlg.color_2.setAutoFillBackground(True)
+        pep=self.dlg.color_2.palette().color(1)
 
         pass
 
@@ -2980,8 +2980,8 @@ class ZI_GTC:
         self.dlg.TL_Dist_Cost_Valhalla.setText("150")
         self.dlg.TL_radiZI.setText("20")
         self.dlg.colorArea.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
-        self.dlg.color_CCU.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
-        self.dlg.color_CCU.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
+        self.dlg.color_2.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
+        self.dlg.color.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
         self.dlg.lblNum.setText("")
         self.dlg.lblNum.setStyleSheet('border:1px solid #000000')
@@ -2989,7 +2989,7 @@ class ZI_GTC:
         self.changeComboMetodeTreball_CCU()
         self.changeComboMetodeTreball_Valhalla()    
         self.dlg.lblColor_CCU.setEnabled(False)
-        self.dlg.color_CCU.setEnabled(False)
+        self.dlg.color_2.setEnabled(False)
         self.dlg.lblTras.setEnabled(False)
         self.dlg.comboTras.setEnabled(False)
         self.dlg.lblEstatConn.setText('No connectat')

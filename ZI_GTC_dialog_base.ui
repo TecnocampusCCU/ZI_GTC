@@ -1719,7 +1719,7 @@ border-color: rgb(0, 0, 0);</string>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="tab_CCU">
     <attribute name="title">
@@ -1779,7 +1779,7 @@ border-color: rgb(0, 0, 0);</string>
        <string>Color:</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="color_CCU">
+     <widget class="QPushButton" name="color_2">
       <property name="geometry">
        <rect>
         <x>230</x>
