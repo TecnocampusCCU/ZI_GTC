@@ -2981,7 +2981,7 @@ class ZI_GTC:
         self.dlg.TL_radiZI.setText("20")
         self.dlg.colorArea.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
         self.dlg.color_2.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
-        self.dlg.color.setStyleSheet('border:1px solid #000000; background-color: #aaffff')
+        self.dlg.color.setStyleSheet('border:1px solid #000000; background-color: #ff0000')
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
         self.dlg.lblNum.setText("")
         self.dlg.lblNum.setStyleSheet('border:1px solid #000000')
