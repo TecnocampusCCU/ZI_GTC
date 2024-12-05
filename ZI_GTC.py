@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241114"
+Versio_modul="V_Q3.241205"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -2689,7 +2689,9 @@ class ZI_GTC:
                 "go": "pedestrian",
                 "orig": coordenada,
                 "metric": range_type,
-                "range": range
+                "range": range,
+                "polygons": "true",
+                "reverse": str(not(self.dlg.checkReverse.isChecked())).lower()
             }
             response = requests.get(valhalla_base_url, params=params)
             if response.status_code == 200:
@@ -2747,11 +2749,12 @@ class ZI_GTC:
             params = {
                 "mode": "valhalla",
                 "service": "expansion",
-                "expansion_mode": "isochrone",
                 "go": "pedestrian",
                 "orig": coordenada,
                 "metric": range_type,
-                "range": range
+                "range": range,
+                "polygons": "true",
+                "reverse": str(not(self.dlg.checkReverse.isChecked())).lower()
             }
             response = requests.get(valhalla_base_url, params=params)
             if response.status_code == 200:
@@ -3024,6 +3027,8 @@ class ZI_GTC:
         self.dlg.comboCapaPunts_CCU.setEnabled(False)
         self.dlg.chk_calc_local_CCU.setChecked(True)
         self.dlg.chk_calc_local_CCU.setVisible(True)
+        self.dlg.tabServeiRouting.setCurrentIndex(0)
+        self.dlg.checkReverse.setChecked(False)
         self.dlg.setWindowIcon(QIcon(self.plugin_dir+'\icon.png'))
         QApplication.processEvents()
         self.dlg.setEnabled(True)

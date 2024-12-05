@@ -1719,7 +1719,7 @@ border-color: rgb(0, 0, 0);</string>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_CCU">
     <attribute name="title">
@@ -2023,6 +2023,22 @@ border-color: rgb(0, 0, 0);</string>
       </property>
       <property name="text">
        <string>Distància/funció de cost fixa</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkReverse">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>90</y>
+        <width>91</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Activat: direcció de capa a exterior.&lt;/p&gt;&lt;p&gt;Desactivat: direcció d'exterior a capa.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>Des de la capa</string>
       </property>
      </widget>
     </widget>
