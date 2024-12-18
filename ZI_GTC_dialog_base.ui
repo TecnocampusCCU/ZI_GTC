@@ -1715,7 +1715,7 @@ border-color: rgb(0, 0, 0);</string>
      <x>9</x>
      <y>180</y>
      <width>361</width>
-     <height>151</height>
+     <height>161</height>
     </rect>
    </property>
    <property name="currentIndex">
@@ -1799,7 +1799,7 @@ border-color: rgb(0, 0, 0);</string>
        <x>0</x>
        <y>0</y>
        <width>351</width>
-       <height>121</height>
+       <height>131</height>
       </rect>
      </property>
      <property name="autoFillBackground">
@@ -1812,7 +1812,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>20</y>
+        <y>26</y>
         <width>181</width>
         <height>21</height>
        </rect>
@@ -1835,7 +1835,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>0</y>
+        <y>6</y>
         <width>121</width>
         <height>21</height>
        </rect>
@@ -1853,7 +1853,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>39</y>
+        <y>51</y>
         <width>91</width>
         <height>17</height>
        </rect>
@@ -1866,7 +1866,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>19</y>
+        <y>31</y>
         <width>91</width>
         <height>17</height>
        </rect>
@@ -1879,7 +1879,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>90</y>
+        <y>96</y>
         <width>140</width>
         <height>24</height>
        </rect>
@@ -1889,7 +1889,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>60</y>
+        <y>72</y>
         <width>113</width>
         <height>20</height>
        </rect>
@@ -1899,7 +1899,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>60</y>
+        <y>71</y>
         <width>171</width>
         <height>21</height>
        </rect>
@@ -1912,7 +1912,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>90</y>
+        <y>96</y>
         <width>191</width>
         <height>21</height>
        </rect>
@@ -1925,13 +1925,29 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>45</y>
+        <y>51</y>
         <width>171</width>
         <height>17</height>
        </rect>
       </property>
       <property name="text">
        <string>Calcul en local</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkReverse">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>12</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Desactivat: De la perifèria al centre.&lt;/p&gt;&lt;p&gt;Activat: Del centre a la perifèria.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>Des del centre</string>
       </property>
      </widget>
     </widget>
@@ -1959,7 +1975,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>20</y>
+        <y>26</y>
         <width>181</width>
         <height>21</height>
        </rect>
@@ -1982,7 +1998,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>0</y>
+        <y>6</y>
         <width>121</width>
         <height>21</height>
        </rect>
@@ -2000,7 +2016,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>60</y>
+        <y>72</y>
         <width>113</width>
         <height>20</height>
        </rect>
@@ -2010,7 +2026,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>60</y>
+        <y>72</y>
         <width>171</width>
         <height>21</height>
        </rect>
@@ -2025,25 +2041,26 @@ border-color: rgb(0, 0, 0);</string>
        <string>Distància/funció de cost fixa</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="checkReverse">
-      <property name="geometry">
-       <rect>
-        <x>30</x>
-        <y>90</y>
-        <width>91</width>
-        <height>17</height>
-       </rect>
-      </property>
-      <property name="toolTip">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Activat: direcció de capa a exterior.&lt;/p&gt;&lt;p&gt;Desactivat: direcció d'exterior a capa.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-      <property name="text">
-       <string>Des de la capa</string>
-      </property>
-     </widget>
+    </widget>
+    <widget class="QCheckBox" name="checkReverse_VAL">
+     <property name="geometry">
+      <rect>
+       <x>210</x>
+       <y>12</y>
+       <width>131</width>
+       <height>17</height>
+      </rect>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Desactivat: De la perifèria al centre.&lt;/p&gt;&lt;p&gt;Activat: Del centre a la perifèria.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Des del centre</string>
+     </property>
     </widget>
    </widget>
   </widget>
+  <zorder>tabServeiRouting</zorder>
   <zorder>layoutWidget</zorder>
   <zorder>comboConnexio</zorder>
   <zorder>groupBox_4</zorder>
@@ -2060,7 +2077,6 @@ border-color: rgb(0, 0, 0);</string>
   <zorder>bt_info</zorder>
   <zorder>label</zorder>
   <zorder>label_3</zorder>
-  <zorder>tabServeiRouting</zorder>
  </widget>
  <resources/>
  <connections/>

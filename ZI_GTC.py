@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241205"
+Versio_modul="V_Q3.241216"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -400,7 +400,7 @@ class ZI_GTC:
         return errors
     
     def calcul_graf(self,sql_buff):
-        """Aquesta es una funcio auxiliar que retorna un sql amb el buffer"""
+        """Fa servir el PGROUTING de POSTGRESQL per fer el routing. Aquesta es una funcio auxiliar que retorna un sql amb el buffer"""
         global cur
         global conn
         global micolor_Topo
@@ -409,6 +409,7 @@ class ZI_GTC:
         global Fitxer
         global progress
         global geometria
+        print("servidor")
 #       *****************************************************************************************************************
 #       INICI CREACIO DE LA TAULA 'XARXA_GRAF' I PREPARACIO DELS CAMPS COST I REVERSE_COST
 #       *****************************************************************************************************************
@@ -421,6 +422,10 @@ class ZI_GTC:
             """S'aplica com a cost tant directe com invers el valor de la longitud del segment"""
             sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=st_length(\"geom\"), \"reverse_cost\"=st_length(\"geom\");\n"
         else:
+            if (not(self.dlg.checkReverse.isChecked())):
+                """S'aplica com a 'cost' el valor del camp 'cost directe', i a 'reverse_cost' el valor del camp 'cost_invers"""
+                sql_1+="UPDATE \"Xarxa_Graf\" set \"reverse_cost\"=\"cost\",\"cost\"=\"reverse_cost\";\n"
+
             if (self.dlg.chk_CostInvers_CCU.isChecked()):
                 """S'aplica com a 'cost' el valor del camp 'cost directe', i a 'reverse_cost' el valor del camp 'cost_invers"""
                 #sql_1+="UPDATE \"Xarxa_Graf\" set \"cost\"=\"Cost_Directe\", \"reverse_cost\"=\"Cost_Invers\";\n"
@@ -1274,7 +1279,8 @@ class ZI_GTC:
         global tipus_entitat_punt
 
         self.dlg.setEnabled(False)
-        
+        Fitxer="ccu_temp"+datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+
         errors = self.controlErrors()
         if len(errors) > 0:
             llista = "Llista d'errors:\n\n"
@@ -2075,6 +2081,14 @@ class ZI_GTC:
                     else:
                         uri.setDataSource("","(SELECT * FROM Graf_utilitzat_"+Fitxer+")","geom","","id")
                         vlayer = QgsVectorLayer(uri.uri(), titol3.decode('utf8'), "postgres")
+                    if self.dlg.tabServeiRouting.currentIndex() == 1:
+                        alg_params = {
+                        'FIELD' : ['entity_id'],
+                        'INPUT': vlayer,
+                        'SEPARATE_DISJOINT' : False,
+                        'OUTPUT': 'TEMPORARY_OUTPUT'
+                        }
+                        vlayer = processing.run('native:dissolve', alg_params)['OUTPUT']
 
                     if vlayer.isValid():
                         Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -2186,6 +2200,8 @@ class ZI_GTC:
         #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
         #               *****************************************************************************************************************
         #                uri.setDataSource("","("+sql_total+")","geom","","id")
+        print("local i distancia")
+
         QApplication.processEvents()
         uri2.setDataSource("","("+sql_punts+")","geom","","id")
         QApplication.processEvents()
@@ -2418,6 +2434,8 @@ class ZI_GTC:
         #               *****************************************************************************************************************
         #                uri.setDataSource("","("+sql_total+")","geom","","id")
         global Fitxer
+        print("local i temps")
+
         QApplication.processEvents()
         uri2.setDataSource("","("+sql_punts+")","geom","","id")
         QApplication.processEvents()
@@ -2657,6 +2675,8 @@ class ZI_GTC:
         return result_buffer_dissolve,result_dissolve,buffer_dissolved
 
     def calcul_graf_valhalla(self,sql_punts):
+        print("valhalla")
+
         crs_desti = QgsCoordinateReferenceSystem('EPSG:4326')
         crs_origen = QgsProject.instance().crs()
         transform_context = QgsProject.instance().transformContext()
@@ -2691,9 +2711,11 @@ class ZI_GTC:
                 "metric": range_type,
                 "range": range,
                 "polygons": "true",
-                "reverse": str(not(self.dlg.checkReverse.isChecked())).lower()
+                "reverse": str(not(self.dlg.checkReverse_VAL.isChecked())).lower()
             }
             response = requests.get(valhalla_base_url, params=params)
+            print (response.url)
+
             if response.status_code == 200:
                 try:
                     result_iso = response.json()
@@ -2754,9 +2776,10 @@ class ZI_GTC:
                 "metric": range_type,
                 "range": range,
                 "polygons": "true",
-                "reverse": str(not(self.dlg.checkReverse.isChecked())).lower()
+                "reverse": str(not(self.dlg.checkReverse_VAL.isChecked())).lower()
             }
             response = requests.get(valhalla_base_url, params=params)
+            print (response.url)
             if response.status_code == 200:
                 try:
                     result_exp = response.json()
@@ -2800,7 +2823,7 @@ class ZI_GTC:
         else:
             print("No s'han trobat capes de carrers de Valhalla per unir")
             return
-        
+
         network_lyr = result_exp
 
         # Intersecció
@@ -2943,16 +2966,18 @@ class ZI_GTC:
         temps = 'Temps'
         nom_metode=self.dlg.comboMetodeTreball_CCU.currentText()
         if dist == nom_metode:
-            self.dlg.chk_CostNusos_CCU.setEnabled(True)
-            self.dlg.chk_CostInvers_CCU.setEnabled(True)
+            self.dlg.chk_CostNusos_CCU.setEnabled(False)
+            self.dlg.chk_CostInvers_CCU.setEnabled(False)
+            self.dlg.checkReverse.setEnabled(False)
             self.dlg.RB_campFix.setText('Distància (m):')
             self.dlg.RB_campTaula.setText('Camp de la distància:')
             self.dlg.TL_Dist_Cost_CCU.setText("150")
             self.dlg.chk_calc_local_CCU.setVisible(True)
             
         else:
-            self.dlg.chk_CostNusos_CCU.setEnabled(False)
-            self.dlg.chk_CostInvers_CCU.setEnabled(False)
+            self.dlg.chk_CostNusos_CCU.setEnabled(True)
+            self.dlg.chk_CostInvers_CCU.setEnabled(True)
+            self.dlg.checkReverse.setEnabled(True)
             self.dlg.RB_campFix.setText('Temps (minuts):')
             self.dlg.RB_campTaula.setText('Camp del temps:')
             self.dlg.TL_Dist_Cost_CCU.setText("2")
@@ -3029,6 +3054,7 @@ class ZI_GTC:
         self.dlg.chk_calc_local_CCU.setVisible(True)
         self.dlg.tabServeiRouting.setCurrentIndex(0)
         self.dlg.checkReverse.setChecked(False)
+        self.dlg.checkReverse_VAL.setChecked(False)
         self.dlg.setWindowIcon(QIcon(self.plugin_dir+'\icon.png'))
         QApplication.processEvents()
         self.dlg.setEnabled(True)
@@ -3238,7 +3264,7 @@ class ZI_GTC:
         global cur
         global conn
         global connexioFeta
-
+        global Fitxer
         sql = f"DROP TABLE IF EXISTS address_{Fitxer};\n"
         sql += f"DROP TABLE IF EXISTS zone_{Fitxer};\n"
         sql += f"DROP TABLE IF EXISTS parcel_temp_{Fitxer};\n"
@@ -3602,7 +3628,6 @@ class ZI_GTC:
         self.estatInicial()
         self.dlg.show()
         conn=self.getConnections()
-        Fitxer="ccu_temp"+datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
         #layers = QgsMapLayerRegistry.instance().mapLayers().values()
         self.populateComboBox(self.dlg.comboConnexio ,conn,'Selecciona connexió',True)
         
