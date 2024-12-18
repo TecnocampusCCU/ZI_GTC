@@ -86,7 +86,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241216"
+Versio_modul="V_Q3.241218"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -2702,11 +2702,24 @@ class ZI_GTC:
                 #range = str(int(self.dlg.TL_Dist_Cost_Valhalla.text())*60)
                 range = self.dlg.TL_Dist_Cost_Valhalla.text()
 
+        if self.dlg.combo_cost_Valhalla.currentText() == 'Vianant':
+            go = 'pedestrian'
+        elif self.dlg.combo_cost_Valhalla.currentText() == 'Bicicleta':
+            go = 'bicycle'
+        elif self.dlg.combo_cost_Valhalla.currentText() == 'Cotxe':
+            go = 'auto'
+        else:
+            QMessageBox.information(None, 'Informació:', 'No hi ha cap element seleccionat')
+            self.eliminaTaulesCalcul(Fitxer)
+            self.eliminaTaulesTemporals()
+            self.dlg.setEnabled(True)
+            return
+
         for coordenada, punt_id in coordenades:
             params = {
                 "mode": "valhalla",
                 "service": "isochrone",
-                "go": "pedestrian",
+                "go": go,
                 "orig": coordenada,
                 "metric": range_type,
                 "range": range,
@@ -2733,6 +2746,7 @@ class ZI_GTC:
                 crs_desti = QgsProject.instance().crs()
                 transform_context = QgsProject.instance().transformContext()
                 coord_transformer = QgsCoordinateTransform(crs_origen, crs_desti, transform_context)
+                '''
                 for feature_data in geojson_data["features"]:
                     coordinates = feature_data["geometry"]["coordinates"][0]
                     contour_value = feature_data["properties"]["contour"]
@@ -2742,7 +2756,38 @@ class ZI_GTC:
                     feature.setGeometry(polygon)
                     feature.setAttributes([contour_value, punt_id])
                     prov.addFeatures([feature])
-                
+                isocrones.append(layer)
+                '''
+                for feature_data in geojson_data["features"]:
+                    coordinates = feature_data['geometry']['coordinates']
+                    geom_type = feature_data['geometry']['type']
+                    contour_value = feature_data['properties']['contour']
+                    if geom_type == 'Polygon':
+                        rings = [coordinates[0]]
+                    elif geom_type == 'MultiPolygon':
+                        rings = [polygon[0] for polygon in coordinates]
+                    else:
+                        print(f"Error: geometria no reconeguda: {geom_type}")
+                        return
+                    
+                    for ring in rings:
+                        try:
+                            transformed_coords = [
+                                coord_transformer.transform(QgsPointXY(lon, lat)) for lon, lat in ring
+                            ]
+                        except Exception as e:
+                            print(f"Error al transformar les coordenades: {e}")
+                            continue
+                    
+                    if not transformed_coords or len(transformed_coords) < 3:
+                        print("Error: polígon no vàlid")
+                        continue
+                    polygon = QgsGeometry.fromPolygonXY([transformed_coords])
+                    feature = QgsFeature()
+                    feature.setGeometry(polygon)
+                    feature.setAttributes([contour_value, punt_id])
+                    prov.addFeatures([feature])
+                    QApplication.processEvents()
                 isocrones.append(layer)
             else:
                 print(f"Error a la solicitud al servidor Valhalla: {response.status_code}")
@@ -2771,7 +2816,7 @@ class ZI_GTC:
             params = {
                 "mode": "valhalla",
                 "service": "expansion",
-                "go": "pedestrian",
+                "go": go,
                 "orig": coordenada,
                 "metric": range_type,
                 "range": range,

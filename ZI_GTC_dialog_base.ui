@@ -1646,7 +1646,7 @@ border-color: rgb(0, 0, 0);</string>
      <rect>
       <x>10</x>
       <y>37</y>
-      <width>82</width>
+      <width>101</width>
       <height>17</height>
      </rect>
     </property>
@@ -1854,7 +1854,7 @@ border-color: rgb(0, 0, 0);</string>
        <rect>
         <x>210</x>
         <y>51</y>
-        <width>91</width>
+        <width>111</width>
         <height>17</height>
        </rect>
       </property>
@@ -2016,7 +2016,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>72</y>
+        <y>60</y>
         <width>113</width>
         <height>20</height>
        </rect>
@@ -2026,7 +2026,7 @@ border-color: rgb(0, 0, 0);</string>
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>72</y>
+        <y>60</y>
         <width>171</width>
         <height>21</height>
        </rect>
@@ -2040,6 +2040,53 @@ border-color: rgb(0, 0, 0);</string>
       <property name="text">
        <string>Distància/funció de cost fixa</string>
       </property>
+     </widget>
+     <widget class="QLabel" name="lbl_cost_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>90</y>
+        <width>171</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="text">
+       <string>Mode de transport</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="combo_cost_Valhalla">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>90</y>
+        <width>111</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+      <item>
+       <property name="text">
+        <string>Vianant</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Cotxe</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Bicicleta</string>
+       </property>
+      </item>
      </widget>
     </widget>
     <widget class="QCheckBox" name="checkReverse_VAL">
