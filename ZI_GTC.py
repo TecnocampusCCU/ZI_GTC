@@ -23,7 +23,7 @@
 """
 
 import os
-import processing
+import processing # type: ignore
 from PyQt5.QtCore import * #QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import * #QIcon
 from PyQt5 import QtCore
@@ -46,6 +46,7 @@ from qgis.core import QgsGeometry
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsField
 from qgis.core import QgsPointXY
+from qgis.core import QgsClassificationQuantile
 from qgis.utils import iface
 import qgis.utils
 #from PyQt5.QtGui import QProgressBar
@@ -86,7 +87,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.241218"
+Versio_modul="V_Q3.250217"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -1867,7 +1868,13 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Cobertura=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        if (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
+                        if (qgis.utils.Qgis.QGIS_VERSION_INT>=32000):
+                            save_options = QgsVectorFileWriter.SaveVectorOptions()
+                            save_options.driverName = "ESRI Shapefile"
+                            save_options.fileEncoding = "UTF-8"
+                            transform_context = QgsProject.instance().transformContext()
+                            error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                        elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                             save_options = QgsVectorFileWriter.SaveVectorOptions()
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
@@ -1961,7 +1968,13 @@ class ZI_GTC:
                         if vlayer.isValid():
                             Tematic=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                             """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                            if (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
+                            if (qgis.utils.Qgis.QGIS_VERSION_INT>=32000):
+                                save_options = QgsVectorFileWriter.SaveVectorOptions()
+                                save_options.driverName = "ESRI Shapefile"
+                                save_options.fileEncoding = "UTF-8"
+                                transform_context = QgsProject.instance().transformContext()
+                                error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                            elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                                 save_options = QgsVectorFileWriter.SaveVectorOptions()
                                 save_options.driverName = "ESRI Shapefile"
                                 save_options.fileEncoding = "UTF-8"
@@ -1985,15 +1998,19 @@ class ZI_GTC:
                             myRangeList=[]
                             mysymbol=QgsFillSymbol()
                             colorRamp=QgsGradientColorRamp( QColor( 230, 230, 230 ), QColor( 60, 60, 60 ))
-                            
-                            format = QgsRendererRangeLabelFormat()
                             template = "%1 a %2 habitants"
                             precision = 0
-                            format.setFormat(template)
-                            format.setPrecision(precision)
-                            format.setTrimTrailingZeroes(True)
-                            renderer=QgsGraduatedSymbolRenderer.createRenderer(vlayer,fieldname,numberOfClasses,QgsGraduatedSymbolRenderer.Quantile,mysymbol,colorRamp)
-                            renderer.setLabelFormat(format,True)
+
+                            renderer = QgsGraduatedSymbolRenderer()
+                            renderer.setClassAttribute(fieldname)
+                            renderer.setSourceSymbol(mysymbol)
+                            renderer.setSourceColorRamp(colorRamp)
+                            classification_method = QgsClassificationQuantile()
+                            classification_method.setLabelFormat(template)
+                            classification_method.setLabelPrecision(precision)
+                            classification_method.setLabelTrimTrailingZeroes(True)
+                            renderer.setClassificationMethod(classification_method)
+                            renderer.updateClasses(vlayer, numberOfClasses)
                             vlayer.setRenderer(renderer)
                             
                             QgsProject.instance().addMapLayer(vlayer,False)
@@ -2032,7 +2049,13 @@ class ZI_GTC:
                 if vlayer.isValid():
                     Area=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                     """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                    if (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
+                    if (qgis.utils.Qgis.QGIS_VERSION_INT>=32000):
+                        save_options = QgsVectorFileWriter.SaveVectorOptions()
+                        save_options.driverName = "ESRI Shapefile"
+                        save_options.fileEncoding = "UTF-8"
+                        transform_context = QgsProject.instance().transformContext()
+                        error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                    elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                         save_options = QgsVectorFileWriter.SaveVectorOptions()
                         save_options.driverName = "ESRI Shapefile"
                         save_options.fileEncoding = "UTF-8"
@@ -2093,7 +2116,13 @@ class ZI_GTC:
                     if vlayer.isValid():
                         Graf=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                         """Es crea un Shape a la carpeta temporal amb la data i hora actual"""
-                        if (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
+                        if (qgis.utils.Qgis.QGIS_VERSION_INT>=32000):
+                            save_options = QgsVectorFileWriter.SaveVectorOptions()
+                            save_options.driverName = "ESRI Shapefile"
+                            save_options.fileEncoding = "UTF-8"
+                            transform_context = QgsProject.instance().transformContext()
+                            error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                        elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                             save_options = QgsVectorFileWriter.SaveVectorOptions()
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
@@ -3100,7 +3129,7 @@ class ZI_GTC:
         self.dlg.tabServeiRouting.setCurrentIndex(0)
         self.dlg.checkReverse.setChecked(False)
         self.dlg.checkReverse_VAL.setChecked(False)
-        self.dlg.setWindowIcon(QIcon(self.plugin_dir+'\icon.png'))
+        self.dlg.setWindowIcon(QIcon(self.plugin_dir+'\\icon.png'))
         QApplication.processEvents()
         self.dlg.setEnabled(True)
         
