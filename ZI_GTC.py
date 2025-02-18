@@ -87,7 +87,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.250217"
+Versio_modul="V_Q3.250218"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -1973,7 +1973,7 @@ class ZI_GTC:
                                 save_options.driverName = "ESRI Shapefile"
                                 save_options.fileEncoding = "UTF-8"
                                 transform_context = QgsProject.instance().transformContext()
-                                error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                                error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Tematic_"+Tematic+".shp",transform_context,save_options)
                             elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                                 save_options = QgsVectorFileWriter.SaveVectorOptions()
                                 save_options.driverName = "ESRI Shapefile"
@@ -2054,7 +2054,7 @@ class ZI_GTC:
                         save_options.driverName = "ESRI Shapefile"
                         save_options.fileEncoding = "UTF-8"
                         transform_context = QgsProject.instance().transformContext()
-                        error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                        error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Area_"+Area+".shp",transform_context,save_options)
                     elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                         save_options = QgsVectorFileWriter.SaveVectorOptions()
                         save_options.driverName = "ESRI Shapefile"
@@ -2121,7 +2121,7 @@ class ZI_GTC:
                             save_options.driverName = "ESRI Shapefile"
                             save_options.fileEncoding = "UTF-8"
                             transform_context = QgsProject.instance().transformContext()
-                            error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp",transform_context,save_options)
+                            error=QgsVectorFileWriter.writeAsVectorFormatV3(vlayer, TEMPORARY_PATH+"/Graf_"+Graf+".shp",transform_context,save_options)
                         elif (qgis.utils.Qgis.QGIS_VERSION_INT>=31004):
                             save_options = QgsVectorFileWriter.SaveVectorOptions()
                             save_options.driverName = "ESRI Shapefile"
