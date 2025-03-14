@@ -87,7 +87,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.250218"
+Versio_modul="V_Q3.250314"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -134,7 +134,7 @@ class ZI_GTC:
         self.dlg.comboMetodeTreball_CCU.currentIndexChanged.connect(self.changeComboMetodeTreball_CCU)
         self.dlg.comboMetodeTreball_Valhalla.currentIndexChanged.connect(self.changeComboMetodeTreball_Valhalla)
         self.dlg.color.clicked.connect(self.on_click_Color)
-        self.dlg.color_2.clicked.connect(self.on_click_ColorArea)
+        self.dlg.color_2.clicked.connect(self.on_click_ColorRadi)
         self.dlg.colorArea.clicked.connect(self.on_click_ColorArea)
         self.dlg.checkBoxDibuix.stateChanged.connect(self.on_click_cbDibuix)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
@@ -2070,7 +2070,10 @@ class ZI_GTC:
                     vlayer.dataProvider().setEncoding(u'UTF-8')
                     symbols = vlayer.renderer().symbols(QgsRenderContext())
                     symbol=symbols[0]
-                    symbol.setColor(self.dlg.colorArea.palette().color(1))
+                    if self.dlg.groupBox_Graf.isChecked():
+                        symbol.setColor(self.dlg.colorArea.palette().color(1))
+                    else:
+                        symbol.setColor(self.dlg.color_2.palette().color(1))
                     vlayer.setOpacity(0.4)
                     QgsProject.instance().addMapLayer(vlayer,False)
                     root = QgsProject.instance().layerTreeRoot()
@@ -2967,6 +2970,17 @@ class ZI_GTC:
         pep=self.dlg.color.palette().color(1)
 
         pass
+
+    def on_click_ColorRadi(self):
+        global micolor
+        aux = QColorDialog.getColor()
+        if aux.isValid():
+            micolor = aux
+        estilo='border:1px solid #000000; background-color: '+ micolor.name()
+        self.dlg.color_2.setStyleSheet(estilo)
+        self.dlg.color_2.setAutoFillBackground(True)
+        pep=self.dlg.color_2.palette().color(1)
+        pass
     
     def on_click_ColorArea_CCU(self):
         """Aquesta funci� obra un dialeg per poder triar el color de l'area que volem pintar. """
@@ -3090,8 +3104,8 @@ class ZI_GTC:
         self.dlg.lblHab.setStyleSheet('border:1px solid #000000; background-color: rgb(85, 170, 255)')
         self.changeComboMetodeTreball_CCU()
         self.changeComboMetodeTreball_Valhalla()    
-        self.dlg.lblColor_CCU.setEnabled(False)
-        self.dlg.color_2.setEnabled(False)
+        #self.dlg.lblColor_CCU.setEnabled(False)
+        #self.dlg.color_2.setEnabled(False)
         self.dlg.lblTras.setEnabled(False)
         self.dlg.comboTras.setEnabled(False)
         self.dlg.lblEstatConn.setText('No connectat')
