@@ -151,6 +151,7 @@ class ZI_GTC:
         self.dlg.comboLeyenda.currentIndexChanged.connect(self.on_Change_ComboLeyenda)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
         self.dlg.bt_ReloadLeyenda.clicked.connect(self.cerca_elements_Leyenda)
+        self.dlg.bt_info.clicked.connect(self.mostra_info)
         self.dlg.tabWidget_Destino.currentChanged.connect(self.on_Change_TabWidget)
         self.dlg.tabServeiRouting.currentChanged.connect(self.on_Change_TabServeiRouting)
         # Declare instance attributes
@@ -3383,7 +3384,12 @@ class ZI_GTC:
                 print (message)
                 QMessageBox.information(None, "Error", missatge)
                 return
-            
+    def mostra_info(self):
+        if self.dlg.width() == 685:
+            self.dlg.resize(900, self.dlg.height())
+        else:
+            self.dlg.resize(685, self.dlg.height())
+        
     def on_Change_TabWidget(self,i):
         #print(i)
         self.dlg.comboLeyenda.setCurrentIndex(0) 
