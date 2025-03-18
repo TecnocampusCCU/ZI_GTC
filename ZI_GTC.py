@@ -47,6 +47,7 @@ from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsField
 from qgis.core import QgsPointXY
 from qgis.core import QgsClassificationQuantile
+from qgis.core import QgsLineSymbol
 from qgis.utils import iface
 import qgis.utils
 #from PyQt5.QtGui import QProgressBar
@@ -87,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.250314"
+Versio_modul="V_Q3.250318"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -2141,8 +2142,9 @@ class ZI_GTC:
                         #cur.execute("DROP TABLE IF EXISTS Graf_utilitzat_"+Fitxer)
                         #conn.commit()
 
-                        symbols = vlayer.renderer().symbols(QgsRenderContext())
-                        symbol=symbols[0]
+                        #symbols = vlayer.renderer().symbols(QgsRenderContext())
+                        #symbol=symbols[0]
+                        symbol = QgsLineSymbol()
                         symbol.setColor(self.dlg.color.palette().color(1))
                         if (self.dlg.comboTras.currentText()=='Estret'):
                             symbol.setWidth(0.5)
@@ -2833,7 +2835,13 @@ class ZI_GTC:
                 'CRS': f'{crs_projecte}',
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             }
-            result_iso = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+            result_iso_v = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+
+            alg_params = {
+                'INPUT': result_iso_v,
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            }
+            result_iso = processing.run('native:convexhull', alg_params)['OUTPUT']
             result_iso.setName("Isocrones Valhalla Unides")
             #QgsProject.instance().addMapLayer(result_iso)
         else:
@@ -2895,7 +2903,13 @@ class ZI_GTC:
                 'CRS': f'{crs_projecte}',
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             }
-            result_exp = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+            result_exp_v = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
+
+            alg_params = {
+                'INPUT': result_exp_v,
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            }
+            result_exp = processing.run('native:convexhull', alg_params)['OUTPUT']
             result_exp.setName("Carrers Valhalla Unides")
             #QgsProject.instance().addMapLayer(result_exp)
         else:
