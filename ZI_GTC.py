@@ -88,7 +88,7 @@ Path_Inicial=expanduser("~")
 cur=None
 conn=None
 progress=None
-Versio_modul="V_Q3.250318"
+Versio_modul="V_Q3.250320"
 connexioFeta = False
 geometria=""
 TEMPORARY_PATH=""
@@ -1775,6 +1775,8 @@ class ZI_GTC:
                                 return
                     else:
                         QApplication.processEvents()
+                        uri.setDataSource("","(SELECT * FROM stretch)","geom","","id")
+                        vlayer_graf = QgsVectorLayer(uri.uri(False), "graf", "postgres")
                         uri.setDataSource("","("+sql_total+")","geom","","id")
                         QApplication.processEvents()
                         punts_lyr = QgsVectorLayer(uri.uri(False), "punts", "postgres")
@@ -1890,7 +1892,7 @@ class ZI_GTC:
                         vlayer = QgsVectorLayer(TEMPORARY_PATH+"/Cobertura_"+Cobertura+".shp", titol3.decode('utf8'), "ogr")
                         symbols = vlayer.renderer().symbols(QgsRenderContext())
                         symbol=symbols[0]
-                        symbol.setColor(self.dlg.color.palette().color(1))
+                        symbol.setColor(self.dlg.colorArea.palette().color(1))
                         QgsProject.instance().addMapLayer(vlayer,False)
                         root = QgsProject.instance().layerTreeRoot()
                         myLayerNode=QgsLayerTreeLayer(vlayer)
@@ -2072,7 +2074,7 @@ class ZI_GTC:
                     vlayer.dataProvider().setEncoding(u'UTF-8')
                     symbols = vlayer.renderer().symbols(QgsRenderContext())
                     symbol=symbols[0]
-                    if self.dlg.groupBox_Graf.isChecked():
+                    if self.dlg.RB_Graf.isChecked():
                         symbol.setColor(self.dlg.colorArea.palette().color(1))
                     else:
                         symbol.setColor(self.dlg.color_2.palette().color(1))
@@ -2141,10 +2143,10 @@ class ZI_GTC:
                         vlayer.dataProvider().setEncoding(u'UTF-8')
                         #cur.execute("DROP TABLE IF EXISTS Graf_utilitzat_"+Fitxer)
                         #conn.commit()
-
-                        #symbols = vlayer.renderer().symbols(QgsRenderContext())
-                        #symbol=symbols[0]
-                        symbol = QgsLineSymbol()
+                        
+                        symbols = vlayer.renderer().symbols(QgsRenderContext())
+                        symbol=symbols[0]
+                        #symbol = QgsLineSymbol()
                         symbol.setColor(self.dlg.color.palette().color(1))
                         if (self.dlg.comboTras.currentText()=='Estret'):
                             symbol.setWidth(0.5)
@@ -2903,13 +2905,7 @@ class ZI_GTC:
                 'CRS': f'{crs_projecte}',
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             }
-            result_exp_v = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
-
-            alg_params = {
-                'INPUT': result_exp_v,
-                'OUTPUT': 'TEMPORARY_OUTPUT'
-            }
-            result_exp = processing.run('native:convexhull', alg_params)['OUTPUT']
+            result_exp = processing.run('native:mergevectorlayers', alg_params)['OUTPUT']
             result_exp.setName("Carrers Valhalla Unides")
             #QgsProject.instance().addMapLayer(result_exp)
         else:
